@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(spreadInterp)
 
+# testing is disabled for now
+
 message(STATUS "ACCESSING TEST DIRECTORY: ${PROJECT_SOURCE_DIR}")
 
 set(TEST_DATA ${CMAKE_CURRENT_LIST_DIR}/test_data)

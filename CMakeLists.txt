@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(spreadInterp CXX)
+project(Spectral_Stokes_IBMethod CXX)
 
 # lib and bin will be in top source
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}")
@@ -42,7 +42,8 @@ find_package(FFTW REQUIRED)
 
 # general compiler flags
 option(debug "Build with debugger" ON)
-option(test "Build all tests" ON)
+# disabling testing for now
+#option(test "Build all tests" ON)
 
 
 # setting include dir and general compile flags
@@ -121,6 +122,7 @@ install(TARGETS test_spread_TP RUNTIME DESTINATION bin/testing)
 install(TARGETS test_cheb RUNTIME DESTINATION bin/testing)
 install(TARGETS test_transform_TP RUNTIME DESTINATION bin/testing)
 
+# disabling testing for now
 #if (test)
 #  # Download and unpack googletest at configure time
 #  configure_file(cmake.in/download_googltest.cmake.in googletest-download/CMakeLists.txt)
