@@ -1,3 +1,4 @@
+# import Python modules wrapping C libraries (and also numpy)
 from Grid import *
 from Species import *
 from SpreadInterp import *
@@ -11,28 +12,31 @@ Lx = Nx * hx; Ly = Ny * hy; Lz = Nz * hz;
 nP = 100
 # viscocity
 eta = 1/4/np.sqrt(np.pi)
-# instantiate grid wrapper
+
+# instantiate grid wrapper (C lib)
 gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof)
-# make triply periodic grid
+# make triply periodic grid (C lib)
 grid = gridGen.MakeTP()
-# instantiate species wrapper
+# instantiate species wrapper (C lib)
 speciesGen = SpeciesGen(nP)
-# make random configuration of particles in terms of size, force and position
+# make random configuration of particles 
+# in terms of size, force and position (C lib)
 species = speciesGen.RandomConfig(grid)
 
-# spread forces on the particles
+# spread forces on the particles (C lib)
 fG = Spread(species, grid, gridGen.Ntotal)
-# write the grid with spread to file
+# write the grid with spread to file (C lib)
 gridGen.WriteGrid(grid, 'spread.txt')
 gridGen.WriteCoords(grid, 'coords.txt')  
 
-# instantiate transform wrapper with spread forces
+# instantiate transform wrapper with spread forces (C lib)
 Tf = Transformer(fG, None, Nx, Ny, Nz, dof)
-# compute forward transform
+# compute forward transform (C lib)
 Forward = Tf.Ftransform()
-# get the Fourier coefficients
+# get the Fourier coefficients (C lib)
 fG_hat_r = Tf.GetRealOut(Forward)
 fG_hat_i = Tf.GetComplexOut(Forward)
+
 # separate x,y,z components
 f_hat = fG_hat_r[0::3] + 1j * fG_hat_i[0::3]
 g_hat = fG_hat_r[1::3] + 1j * fG_hat_i[1::3]
@@ -76,26 +80,24 @@ U_hat_i[0::3] = np.imag(u_hat)
 U_hat_i[1::3] = np.imag(v_hat)
 U_hat_i[2::3] = np.imag(w_hat)
 
-# instantiate back transform wrapper with velocities on grid
+# instantiate back transform wrapper with velocities on grid (C lib)
 Tb = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
 Backward = Tb.Btransform()
-# get real part of back transform and normalize
+# get real part of back transform and normalize (C lib)
 uG_r = Tb.GetRealOut(Backward) / Tb.N
-uG_i = Tb.GetComplexOut(Backward) / Tb.N
-print(np.min(uG_i))
 
-# set velocity as new grid spread
+# set velocity as new grid spread (C lib)
 gridGen.SetGridSpread(grid, uG_r)
 
-# interpolate velocities on the particles
+# interpolate velocities on the particles (C lib)
 vP = Interpolate(species, grid, nP * dof)
 
-# write species with interpolated vel to file
+# write species with interpolated vel to file (C lib)
 speciesGen.WriteSpecies(species, 'particles.txt')
 # write grid velocities
 gridGen.WriteGrid(grid, 'velocities.txt')
 
-# free memory persisting b/w C and python
+# free memory persisting b/w C and python (C lib)
 Tf.Clean(Forward)
 Tf.Delete(Forward)
 Tb.Clean(Backward)

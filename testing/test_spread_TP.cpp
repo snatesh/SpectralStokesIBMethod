@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 {
   fftw_init_threads();
   // grid spacing, effective radius, num total columns
-  const unsigned int Nx = 64, Ny = 64, Nz = 32, dof = 3; 
+  const unsigned int Nx = 64, Ny = 64, Nz = 25, dof = 3; 
   const double hx = 0.5, hy = 0.5, hz = 0.5, Lx = Nx * hx, Ly = Ny * hy, Lz = Nz * hz; 
 
   Grid grid; SpeciesList species;

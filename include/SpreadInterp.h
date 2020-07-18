@@ -12,11 +12,21 @@
 
 // TODO: Fix DP interpolation
 
+// forward declarations
 class Grid;
 class SpeciesList;
 
+
 void spread(SpeciesList& species, Grid& grid); 
 void interpolate(SpeciesList& species, Grid& grid);
+
+extern "C"
+{
+  double* getGridSpread(Grid* grid);
+  double* getSpeciesInterp(SpeciesList* species);
+  double* Spread(SpeciesList* s, Grid* g) {spread(*s, *g); return getGridSpread(g);}
+  double* Interpolate(SpeciesList* s, Grid* g) {interpolate(*s, *g); return getSpeciesInterp(s);}
+}
 
 void spreadTP(SpeciesList& species, Grid& grid);
 void spreadDP(SpeciesList& species, Grid& grid);
@@ -189,6 +199,7 @@ inline void interp_col(const double* Fec, const double* delta, double* flc,
   }
 }
 
+
 // implements copy opertion to enforce periodicity of eulerian data before interpolation
 inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx, 
                    const unsigned short wy, const unsigned short wz, 
@@ -209,7 +220,6 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
     {
       for (unsigned int j = 0; j < Ny_wrap; ++j)
       {
-        //#pragma omp simd aligned(Fe, Fe_wrap: MEM_ALIGN)
         for (unsigned int i = 0; i < Nx_wrap; ++i)
         {
           unsigned int ii = i + lend, jj = j + bend, kk = k + dend;
@@ -220,14 +230,30 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
         }
       }
     }
-  
     // copy eulerian data in y-z plane in periodic region to ghost
     #pragma omp for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    for (unsigned int k = dend; k < ubeg; ++k)
     {
-      for (unsigned int j = 0; j < Ny; ++j)
+      for (unsigned int j = bend; j < tbeg; ++j)
       {
-        // first copy left to right
+        // first copy right to left
+        for (unsigned int i = 0; i < lend; ++i)
+        {
+          unsigned int ipb = i + Nx_wrap;
+          #pragma omp simd aligned(Fe: MEM_ALIGN)
+          for (unsigned int d = 0; d < dof; ++d)
+          {
+            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(ipb, j, k, Nx, Ny)]; 
+          }
+        }  
+      }
+    }
+    #pragma omp for collapse(3)
+    for (unsigned int k = dend; k < ubeg; ++k)
+    {
+      for (unsigned int j = bend; j < tbeg; ++j)
+      {
+        // now copy left to right
         for (unsigned int i = rbeg; i < Nx; ++i)
         {
           unsigned int ipb = i - Nx_wrap;
@@ -239,26 +265,10 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
         }
       }
     }
-    #pragma omp for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
-    {
-      for (unsigned int j = 0; j < Ny; ++j)
-      {
-        // now copy right to left
-        for (unsigned int i = 0; i < lend; ++i)
-        {
-          unsigned int ipb = i + Nx_wrap;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0 ; d < dof; ++d)
-          {
-            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(ipb, j, k, Nx, Ny)]; 
-          }
-        }  
-      }
-    }
+
     // copy eulerian data in x-z plane in periodic region to ghost
     #pragma omp for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    for (unsigned int k = dend; k < ubeg; ++k)
     {
       for (unsigned int j = tbeg; j < Ny; ++j)
       {
@@ -269,13 +279,13 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
           #pragma omp simd aligned(Fe: MEM_ALIGN)
           for (unsigned int d = 0; d < dof; ++d)
           {
-            Fe[d + dof * at(i, j, k, Nx, Ny)] += Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
+            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
           }
         }
       }
     }
     #pragma omp for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    for (unsigned int k = dend; k < ubeg; ++k)
     {
       for (unsigned int j = 0; j < bend; ++j)
       {
@@ -286,7 +296,7 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
           #pragma omp simd aligned(Fe: MEM_ALIGN)
           for (unsigned int d = 0; d < dof; ++d)
           {
-            Fe[d + dof * at(i, j, k, Nx, Ny)] += Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
+            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
           }
         }  
       }
@@ -304,7 +314,7 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
           #pragma omp simd aligned(Fe: MEM_ALIGN)
           for (unsigned int d = 0; d < dof; ++d)
           {
-            Fe[d + dof * at(i, j, k, Nx, Ny)] += Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
+            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
           }
         }
       }
@@ -314,14 +324,14 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
     {
       for (unsigned int j = 0; j < Ny; ++j)
       {
-        // now copy top to bottom
-        for (unsigned int i = 0; i < Nz; ++i)
+        // now copy up to down
+        for (unsigned int i = 0; i < Nx; ++i)
         {
           unsigned int kpb = k + Nz_wrap;
           #pragma omp simd aligned(Fe: MEM_ALIGN)
           for (unsigned int d = 0; d < dof; ++d)
           {
-            Fe[d + dof * at(i, j, k, Nx, Ny)] += Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
+            Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
           }
         }
       }
@@ -331,9 +341,9 @@ inline void copyTP(double* Fe, const double* Fe_wrap, const unsigned short wx,
 
 // implements fold operation to de-ghostify spread data, i.e. enable periodic spread
 inline void foldTP(double* Fe, double* Fe_wrap, const unsigned short wx, 
-                     const unsigned short wy, const unsigned short wz, 
-                     const unsigned int Nx, const unsigned int Ny,
-                     const unsigned int Nz, const unsigned int dof)
+                   const unsigned short wy, const unsigned short wz, 
+                   const unsigned int Nx, const unsigned int Ny,
+                   const unsigned int Nz, const unsigned int dof)
 {
   unsigned int lend = wx, Nx_wrap = Nx - 2 * wx;
   unsigned int rbeg = Nx - lend;

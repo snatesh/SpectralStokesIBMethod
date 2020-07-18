@@ -279,7 +279,7 @@ void interpTP(SpeciesList& species, Grid& grid)
                              zunwrap, alphaf, npts_match, wx, wy, wz, species.wfxP_max,
                              species.wfyP_max, species.wfzP_max);
 
-              // spread the particle forces with the kernel weights
+              // interpolate on the particles with the kernel weights
               interp_col(fGc, delta, fPc, zoffset, npts_match, kersz, grid.dof, weight);
 
               // scatter back to global lagrangian grid

@@ -265,18 +265,11 @@ void SpeciesList::locateOnGridTP(Grid& grid)
       for (unsigned int j = 0; j < wx; ++j)
       {
         // TODO : something wrong with weird grid spacing like 0.3 or 0.7
-        //std::cout << wx / 2 << " " << (double) wx / 2 << " " << std::round((double) wx / 2) << std::endl;
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hxeff - xP[3 * i];
         // initialize buffer region if needed
         if (j == wx - 1 && wx < wfxP_max)
         {
           for (unsigned int k = wx; k < wfxP_max; ++k) {xunwrap[k + i * wfxP_max] = 0;}
-        }
-        if (abs(xunwrap[j + i * wfxP_max])/alphafP[i] > 1)
-        {
-          std::cout << "bad X: " << j << " " << wx << " " << xunwrap[j + i * wfxP_max] \
-                    << " " << xP[3 * i] << " " << alphafP[i] << " " \
-                    << xP[3 * i] / grid.hxeff << " " << xclose[i] << std::endl;
         }
       } 
       for (unsigned int j = 0; j < wy; ++j)
@@ -295,13 +288,6 @@ void SpeciesList::locateOnGridTP(Grid& grid)
         if (j == wz - 1 && wz < wfzP_max)
         {
           for (unsigned int k = wz; k < wfzP_max; ++k) {zunwrap[k + i * wfzP_max] = 0;}
-        }
-        if (abs(zunwrap[j + i * wfzP_max])/alphafP[i] > 1)
-        {
-          std::cout << "bad Z: " << j << " " << wz << " " \
-                    << zunwrap[j + i * wfzP_max] << " " << xP[2 + 3 * i] << " " \
-                    << alphafP[i] << " " << xP[2 + 3 * i] / grid.hzeff << " " \
-                    << zclose[i] << std::endl;
         }
       }
       zoffset[i] = wx * wy * (zclose[i] - wz / 2 + evenz + wfzP_max);    
