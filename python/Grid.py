@@ -1,5 +1,7 @@
 import ctypes
 
+# Python wrappers for C library Grid routines
+
 libGrid = ctypes.CDLL('../lib/libgrid.so')
 
 class GridGen(object):

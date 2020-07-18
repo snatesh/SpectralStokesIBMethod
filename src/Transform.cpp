@@ -3,14 +3,10 @@
 #include<iostream>
 
 Transform::Transform() : in_real(0),in_complex(0),out_real(0),out_complex(0),
-                         Nx(0),Ny(0),Nz(0),dof(0),rank(0) 
-{
-  std::cout << "Empty transform" << std::endl;
-}
+                         Nx(0),Ny(0),Nz(0),dof(0),rank(0) {}
 
 
-// Assumes input data to transform is real, constructs forward plan
-// and executes
+// Constructs forward plan and executes - assumes input has 0 complex part
 Transform::Transform(const double* _in_real, const unsigned int _Nx, 
                      const unsigned int _Ny, const unsigned int _Nz, 
                      const unsigned int _dof)
@@ -46,7 +42,7 @@ Transform::Transform(const double* _in_real, const unsigned int _Nx,
   fftw_execute(pF);
 }
 
-// Constructs backward plan and executes
+// Constructs backward plan and executes 
 Transform::Transform(const double* _out_real, const double* _out_complex,
                      const unsigned int _Nx, const unsigned int _Ny, 
                      const unsigned int _Nz, const unsigned int _dof)

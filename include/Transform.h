@@ -4,14 +4,26 @@
 #include<iostream>
 #include "exceptions.h"
 
+// Forward and Backward Fourier transform object.
+// Currently, only triple periodicity is supported,
+// with imminent plans to add double periodicity for
+// Fourier-Chebyshev transform.
+
 struct Transform
 {
+  // real and complex input
   double *in_real, *in_complex;
+  // real and complex output (these are aliased to input ptrs)
   double *out_real, *out_complex;
+  // forward and backward plans
   fftw_plan pF, pB;
+  // structs for configuring mem layout
   fftw_iodim *dims, *howmany_dims;
   unsigned int Nx, Ny, Nz;
-  unsigned int dof, rank; 
+  // degrees of freedom in the input, dimension of the problem
+  // eg. if 4-component vector field in 3D, dof = 4 and rank = 3
+  unsigned int dof, rank;
+  // internal flag indicating whether we do a forward or back transform 
   int mode;
 
   Transform(); 

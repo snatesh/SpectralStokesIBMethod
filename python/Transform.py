@@ -1,6 +1,8 @@
 import ctypes
 import numpy as np
 
+# Python wrappers for C library Transform routines
+
 libTransform = ctypes.CDLL('../lib/libtransform.so')
 
 class Transformer(object):

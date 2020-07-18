@@ -1,5 +1,7 @@
 import ctypes
 
+# Python wrappers for C library SpeciesList routines
+
 libSpecies = ctypes.CDLL('../lib/libspecies.so')
 
 class SpeciesGen(object):

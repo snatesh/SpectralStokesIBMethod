@@ -27,8 +27,7 @@ SpeciesList::SpeciesList() : xP(0), fP(0), betafP(0), alphafP(0),
                              radP(0), normfP(0), wfP(0), wfxP(0), wfyP(0),
                              wfzP(0), nP(0), normalized(false), dof(0), 
                              unique_monopoles(ESParticleSet(20,esparticle_hash)),
-                             xclose(0), yclose(0), zclose(0), xunwrap(0),
-                             yunwrap(0), zunwrap(0), zoffset(0)
+                             xunwrap(0), yunwrap(0), zunwrap(0), zoffset(0)
 {}
 
 
@@ -240,9 +239,9 @@ void SpeciesList::locateOnGridTP(Grid& grid)
   yunwrap = (double *) fftw_malloc(wfyP_max * nP * sizeof(double));
   zunwrap = (double *) fftw_malloc(wfzP_max * nP * sizeof(double));
   
-  xclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
-  yclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
-  zclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  (unsigned int *) xclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  (unsigned int *) yclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  (unsigned int *) zclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
   
   zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
  

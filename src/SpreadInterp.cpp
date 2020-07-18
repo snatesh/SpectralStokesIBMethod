@@ -5,16 +5,6 @@
 #include<omp.h>
 #include<fftw3.h>
 #include<algorithm>
-/* before calling anything, need to run
-  Grid grid; SpeciesList species; 
-  grid.Setup(); species.Setup();
-  species.NormalizeKernels(grid.maxh); 
-  
-*/
-// TODO: for some reason, zunwrap is giving values out of the support, 
-//       which causes the kernel evaluation to return nan as 1-(x[2]/alpha)^2 < 0
-//       this happens for even and odd widths after a certain number of particles
-//       are requested (????)
 
 void spread(SpeciesList& species, Grid& grid)
 {
@@ -77,7 +67,6 @@ void spreadTP(SpeciesList& species, Grid& grid)
             if (l >= 0 && species.alphafP[l] == alphaf)
             {
               // global indices of wx x wy x Nz subarray influenced by column(i,j)
-//              alignas(MEM_ALIGN) unsigned int indc3D[subsz];
               unsigned int* indc3D = (unsigned int*) fftw_malloc(subsz * sizeof(unsigned int));
               for (int k3D = 0; k3D < grid.Nzeff; ++k3D)
               {
@@ -92,7 +81,6 @@ void spreadTP(SpeciesList& species, Grid& grid)
                 }
               }
               // gather forces from grid subarray
-              //alignas(MEM_ALIGN) double fGc[subsz * grid.dof];  
               double* fGc = (double*) fftw_malloc(subsz * grid.dof * sizeof(double));
               gather(subsz, fGc, grid.fG_unwrap, indc3D, grid.dof);
               // particle indices
@@ -103,8 +91,6 @@ void spreadTP(SpeciesList& species, Grid& grid)
                 ltmp = grid.nextn[ltmp];
                 if (species.alphafP[ltmp] == alphaf) {npts_match += 1;}
               }
-              // TODO: don't need to allocate this cause it'll never be very large
-              //alignas(MEM_ALIGN) unsigned int indx[npts_match]; indx[0] = l;
               unsigned int* indx = (unsigned int*) fftw_malloc(npts_match * sizeof(unsigned int));
               indx[0] = l;
               for (unsigned int ipt = 1; ipt < npts; ++ipt)
@@ -136,7 +122,6 @@ void spreadTP(SpeciesList& species, Grid& grid)
               gather(npts_match, zoffset, species.zoffset, indx, 1);
 
               // get the kernel w x w x w kernel weights for each particle in col 
-              //alignas(MEM_ALIGN) double delta[kersz * npts_match];
               double* delta = (double*) fftw_malloc(kersz * npts_match * sizeof(double));
               delta_eval_col(delta, betafPc, wfPc, normfPc, xunwrap, yunwrap, 
                              zunwrap, alphaf, npts_match, wx, wy, wz, species.wfxP_max,
@@ -215,7 +200,6 @@ void interpTP(SpeciesList& species, Grid& grid)
             if (l >= 0 && species.alphafP[l] == alphaf)
             {
               // global indices of wx x wy x Nz subarray influenced by column(i,j)
-//              alignas(MEM_ALIGN) unsigned int indc3D[subsz];
               unsigned int* indc3D = (unsigned int*) fftw_malloc(subsz * sizeof(unsigned int));
               for (int k3D = 0; k3D < grid.Nzeff; ++k3D)
               {
@@ -230,7 +214,6 @@ void interpTP(SpeciesList& species, Grid& grid)
                 }
               }
               // gather forces from grid subarray
-              //alignas(MEM_ALIGN) double fGc[subsz * grid.dof];  
               double* fGc = (double*) fftw_malloc(subsz * grid.dof * sizeof(double));
               gather(subsz, fGc, grid.fG_unwrap, indc3D, grid.dof);
               // particle indices
@@ -241,8 +224,6 @@ void interpTP(SpeciesList& species, Grid& grid)
                 ltmp = grid.nextn[ltmp];
                 if (species.alphafP[ltmp] == alphaf) {npts_match += 1;}
               }
-              // TODO: don't need to allocate this cause it'll never be very large
-              //alignas(MEM_ALIGN) unsigned int indx[npts_match]; indx[0] = l;
               unsigned int* indx = (unsigned int*) fftw_malloc(npts_match * sizeof(unsigned int));
               indx[0] = l;
               for (unsigned int ipt = 1; ipt < npts; ++ipt)
@@ -273,7 +254,6 @@ void interpTP(SpeciesList& species, Grid& grid)
               gather(npts_match, zoffset, species.zoffset, indx, 1);
 
               // get the kernel w x w x w kernel weights for each particle in col 
-              //alignas(MEM_ALIGN) double delta[kersz * npts_match];
               double* delta = (double*) fftw_malloc(kersz * npts_match * sizeof(double));
               delta_eval_col(delta, betafPc, wfPc, normfPc, xunwrap, yunwrap, 
                              zunwrap, alphaf, npts_match, wx, wy, wz, species.wfxP_max,
@@ -393,7 +373,6 @@ void spreadDP(SpeciesList& species, Grid& grid)
               const unsigned int kersz = w2 * (*std::max_element(wz, wz + npts_match));
 
               // get the kernel w x w x w kernel weights for each particle in col 
-              //alignas(MEM_ALIGN) double delta[kersz * npts_match];
               double* delta = (double*) fftw_malloc(kersz * npts_match * sizeof(double));
               delta_eval_col(delta, betafPc, wfPc, normfPc, xunwrap, yunwrap, 
                              zunwrap, alphaf, npts_match, wx, wy, wz, species.wfxP_max,
@@ -423,6 +402,7 @@ void spreadDP(SpeciesList& species, Grid& grid)
          species.ext_up, species.ext_down, grid.Nxeff, grid.Nyeff, grid.Nzeff, grid.dof);
 }
 
+// TODO: THIS IS BORKED
 void interpDP(SpeciesList& species, Grid& grid)
 {
   // reinitialize force for interp

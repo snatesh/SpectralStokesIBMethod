@@ -4,14 +4,18 @@
 
 /* Grid is an SoA describing the domain
 
- * fG, uG, pG             - forces, velocities and pressure
+ * fG                     - forces on the grid
+ * fG_unwrap              - forces on extended grid (used internally for BCs)
  * xG, yG, zG             - grids for each axis (sorted in inc or dec order) (see below)
  * Lx, Ly, Lz, hx, hy, hz - length and grid spacing in each dimension 
  *                        - if hx > 0, xG should be Null (same for y,z)
  *                        - if hx = 0, xG must be allocated (same for y,z)
  * periodicity            - triply- (3), doubly- (2), singly- (1) or a- (0) periodic mode
- * 
- * NOTE : The caller manages memory for all data members (either from c or python) */ 
+ * hxeff, hyeff, hzeff    - effective grid spacing (TODO: remove this)
+ * Nxeff, Nyeff, Nzeff    - num points in each dimension for EXTENDED grid
+ * has_locator            - bool indicated whether a grid locator has been constructed
+ * (x,y,z)descend         - bools indicated sorting order of grids, if provided (set internally)
+*/ 
 
 struct Grid
 {

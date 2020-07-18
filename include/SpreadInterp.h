@@ -10,13 +10,17 @@
   #define MEM_ALIGN 16 
 #endif
 
-// TODO: Fix DP interpolation
+/* Main routines for spreading and interpolation 
+   Both are supported for Triply Periodic
+   Only spreading is supported for Doubly Periodic (TODO)
+*/
+
 
 // forward declarations
 class Grid;
 class SpeciesList;
 
-
+// spread and interpolate
 void spread(SpeciesList& species, Grid& grid); 
 void interpolate(SpeciesList& species, Grid& grid);
 
@@ -28,16 +32,18 @@ extern "C"
   double* Interpolate(SpeciesList* s, Grid* g) {interpolate(*s, *g); return getSpeciesInterp(s);}
 }
 
+// spread in triply, doubly, singly or a-periodic mode
 void spreadTP(SpeciesList& species, Grid& grid);
 void spreadDP(SpeciesList& species, Grid& grid);
 inline void spreadSP(SpeciesList& species, Grid& grid){}
 inline void spreadAP(SpeciesList& species, Grid& grid){}
-
+// interpolate in triply, doubly, singly or a-periodic mode
 void interpTP(SpeciesList& species, Grid& grid);
 void interpDP(SpeciesList& species, Grid& grid);
 inline void interpSP(SpeciesList& species, Grid& grid){}
 inline void interpAP(SpeciesList& species, Grid& grid){}
 
+// ES kernel definition (two versions for optimization testing)
 #pragma omp declare simd
 inline double const esKernel(const double x, const double beta, const double alpha)
 {
@@ -47,9 +53,6 @@ inline double const esKernel(const double x, const double beta, const double alp
 #pragma omp declare simd
 inline double const esKernel(const double x[3], const double beta, const double alpha)
 {
-  //std::cout << "in kernel x: " << sqrt(1 - x[0] * x[0] / (alpha * alpha)) << std::endl;
-  //std::cout << "in kernel y: " << sqrt(1 - x[1] * x[1] / (alpha * alpha)) << std::endl;
-  //std::cout << "in kernel z: " << sqrt(1 - x[2] * x[2] / (alpha * alpha)) << std::endl;
   return exp(beta * (sqrt(1 - x[0] * x[0] / (alpha * alpha)) - 1)) * \
          exp(beta * (sqrt(1 - x[1] * x[1] / (alpha * alpha)) - 1)) * \
          exp(beta * (sqrt(1 - x[2] * x[2] / (alpha * alpha)) - 1));
@@ -90,6 +93,7 @@ inline void scatter(unsigned int N, T const* trg, T* src,
   }
 }
 
+// evaluate the delta function weights for the current column for TRIPLY PERIODIC
 inline void delta_eval_col(double* delta, const double* betafPc,
                            const unsigned short* wfPc, const double* normfPc, 
                            const double* xunwrap, const double* yunwrap, 
@@ -120,6 +124,7 @@ inline void delta_eval_col(double* delta, const double* betafPc,
   }
 }
 
+// evaluate the delta function weights for the current column for DOUBLY PERIODIC
 inline void delta_eval_col(double* delta, const double* betafPc,
                            const unsigned short* wfPc, const double* normfPc, 
                            const double* xunwrap, const double* yunwrap, 
@@ -149,6 +154,7 @@ inline void delta_eval_col(double* delta, const double* betafPc,
   }
 }
 
+// spread the delta functions weights for the column for TRIPLY PERIODIC
 inline void spread_col(double* Fec, const double* delta, const double* flc,
                        const unsigned int* zoffset, const int npts,
                        const int w3, const int dof)
@@ -166,6 +172,7 @@ inline void spread_col(double* Fec, const double* delta, const double* flc,
   }
 }
 
+// spread with forces and weights for the column for DOUBLY PERIODIC
 inline void spread_col(double* Fec, const double* delta, const double* flc,
                        const unsigned int* zoffset, const int npts,
                        const int w2, const unsigned short* wz, const int dof)
@@ -182,6 +189,7 @@ inline void spread_col(double* Fec, const double* delta, const double* flc,
   }
 }
 
+// interpolate with the forces and weights for the current column for TRIPLY PERIODIC
 inline void interp_col(const double* Fec, const double* delta, double* flc, 
                        const unsigned int* zoffset, const int npts, 
                        const int w3, const int dof, const double weight)

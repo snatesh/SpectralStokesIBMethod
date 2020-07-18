@@ -9,9 +9,7 @@
  *  SpeciesList is an SoA describing the particle set.
  *  
  *  xP - particle positions (x1,y1,z1,x2,y2,z2,...)
- *  fP - force on each particle
- *  vP - velocity of each particle
- *  pP - pressure of each particle
+ *  fP - force on each particle (can be overwritten with interpolation)
  *  betafP - beta values for monopole kernels
  *  wfP - widths of monopole kernels
  *  normfP - normalizations for monopole kernels
@@ -21,10 +19,6 @@
  *  nP - number of particles
  *  wfxP, wfyP, wfzP - actual width we use for each direction
  *  unique_monopoles - unique ES kernels, automatically freed when SpeciesList exits scope
- *
- * NOTE : The caller manages memory for all data members (either from c or python) 
- *        except for unique_monopoles
-
 */
 
 /* first  define some types to minimize work during initialization. eg. for es, we need to compute
@@ -60,7 +54,7 @@ struct SpeciesList
 {
   double *xP, *fP;
   double *xunwrap, *yunwrap, *zunwrap;
-  unsigned int *xclose, *yclose, *zclose, *zoffset;
+  unsigned int *zoffset;
   double *radP, *betafP, *normfP, *alphafP, *cwfP; 
   unsigned short *wfP, *wfxP, *wfyP, *wfzP;
   unsigned short wfxP_max, wfyP_max, wfzP_max;
@@ -89,7 +83,6 @@ struct SpeciesList
   void writeSpecies(const char* fname) const;
   /* check validity of current state */
   bool validState() const;
-
 };
 
 
