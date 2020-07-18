@@ -61,17 +61,17 @@ void SpeciesList::randInit(Grid& grid, const unsigned int _nP)
     wfxP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
     wfyP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
     wfzP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-    //unsigned short ws[3] = {4, 5, 6};
+    unsigned short ws[3] = {4, 5, 6};
     //unsigned short ws[3] = {6, 6, 6};
-    unsigned short ws[3] = {5, 5, 5};
+    //unsigned short ws[3] = {5, 5, 5};
     //unsigned short ws[3] = {4, 4, 4};
-    //double betas[3] = {1.785, 1.886, 1.714};
+    double betas[3] = {1.785, 1.886, 1.714};
     //double betas[3] = {1.714, 1.714, 1.714};
-    double betas[3] = {1.886, 1.886, 1.886};
+    //double betas[3] = {1.886, 1.886, 1.886};
     //double betas[3] = {1.785, 1.785, 1.785};
-    //double Rhs[3] = {1.2047, 1.3437, 1.5539};
+    double Rhs[3] = {1.2047, 1.3437, 1.5539};
     //double Rhs[3] = {1.5539, 1.5539, 1.5539};
-    double Rhs[3] = {1.3437, 1.3437, 1.3437};
+    //double Rhs[3] = {1.3437, 1.3437, 1.3437};
     //double Rhs[3] = {1.2047, 1.2047, 1.2047};
     std::default_random_engine gen;
     std::uniform_int_distribution<int> unifInd(0,2);
@@ -239,9 +239,9 @@ void SpeciesList::locateOnGridTP(Grid& grid)
   yunwrap = (double *) fftw_malloc(wfyP_max * nP * sizeof(double));
   zunwrap = (double *) fftw_malloc(wfzP_max * nP * sizeof(double));
   
-  (unsigned int *) xclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
-  (unsigned int *) yclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
-  (unsigned int *) zclose = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* xclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* yclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* zclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
   
   zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
  
@@ -423,9 +423,9 @@ void SpeciesList::locateOnGridDP(Grid& grid)
   yunwrap = (double*) fftw_malloc(wfyP_max * nP * sizeof(double));
   zunwrap = (double*) fftw_malloc(wfzP_max * nP * sizeof(double));
   
-  xclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
-  yclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
-  zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* xclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* yclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
+  unsigned int* zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
 
   #pragma omp parallel
   { 
