@@ -1,27 +1,27 @@
 import numpy as np
 
-'''
-Solve Stokes eq in Fourier domain given the Fourier
-coefficients of the forcing
-
-Input:
-  fG_hat_r, fG_hat_i - real and complex part of Fourier coefficients
-                       of spread forces on the grid. These are both
-                       arrays of doubles (not complex).
-
-  eta - viscocity
-  Lx, Ly, Lz - length of unit cell in x,y,z
-  Nx, Ny, Nz - number of points in x, y and z
-
-Output:
-  U_hat_r, U_hat_i - real and complex part of Fourier coefficients of
-                     fluid velocity on the grid. 
-
-Note: We ensure the net force on the unit cell is 0 by *ignoring* 
-      the k = 0 mode. That is, the k=0 mode of the output solution
-      will be 0.
-'''
 def TriplyPeriodicStokes(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz):
+  """
+  Solve triply periodic Stokes eq in Fourier domain given the Fourier
+  coefficients of the forcing.
+  
+  Parameters:
+    fG_hat_r, fG_hat_i - real and complex part of Fourier coefficients
+                         of spread forces on the grid. These are both
+                         arrays of doubles (not complex).
+  
+    eta - viscocity
+    Lx, Ly, Lz - length of unit cell in x,y,z
+    Nx, Ny, Nz - number of points in x, y and z
+  
+  Returns:
+    U_hat_r, U_hat_i - real and complex part of Fourier coefficients of
+                       fluid velocity on the grid. 
+  
+  Note: We ensure the net force on the unit cell is 0 by *ignoring* 
+        the k = 0 mode. That is, the k=0 mode of the output solution
+        will be 0.
+  """
   Ntotal = Nx * Ny * Nz * 3
   # separate x,y,z components
   f_hat = fG_hat_r[0::3] + 1j * fG_hat_i[0::3]

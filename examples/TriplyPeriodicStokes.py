@@ -55,58 +55,53 @@ for iP in np.arange(0,nP):
 # instantiate the python grid wrapper
 gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, periodicity)
 # instantiate and define the grid with C lib call
-# this is a pointer to a C++ struct
-grid = gridGen.Make()
+# this sets the GridGen.grid member to a pointer to a C++ Grid struct
+gridGen.Make()
 # instantiate the python species wrapper
 speciesGen = SpeciesGen(nP, dof, xP, fP, radP, wfP, cwfP, betafP)
 # instantiate and define the species with C lib call
-# this is a pointer to a C++ struct
-species = speciesGen.Make()
+# this sets the SpeciesGen.species member to a pointer to a C++ SpeciesList struct
+speciesGen.Make()
 # setup the species on the grid with C lib call
 # this builds the species-grid locator and defines other
 # interal data used to spread and interpolate
-speciesGen.Setup(species, grid)
+speciesGen.Setup(gridGen.grid)
 
 # spread forces on the particles (C lib)
-fG = Spread(species, grid, gridGen.Ntotal)
+fG = Spread(speciesGen.species, gridGen.grid, gridGen.Ntotal)
 # write the grid with spread to file (C lib)
-gridGen.WriteGrid(grid, 'spread.txt')
-gridGen.WriteCoords(grid, 'coords.txt')  
+gridGen.WriteGrid('spread.txt')
+gridGen.WriteCoords('coords.txt')  
 
 # instantiate transform wrapper with spread forces (C lib)
-fTranformer = Transformer(fG, None, Nx, Ny, Nz, dof)
-# compute forward transform (C lib)
-forward = fTranformer.Ftransform()
-# get the Fourier coefficients (C lib)
-fG_hat_r = fTranformer.GetRealOut(forward)
-fG_hat_i = fTranformer.GetComplexOut(forward)
+fTransformer = Transformer(fG, None, Nx, Ny, Nz, dof)
+fTransformer.Ftransform()
+# get the Fourier coefficients
+fG_hat_r = fTransformer.out_real
+fG_hat_i = fTransformer.out_complex
 
 # solve Stokes eq 
 U_hat_r, U_hat_i = TriplyPeriodicStokes(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz)
 
 # instantiate back transform wrapper with velocities on grid (C lib)
 bTransformer = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
-backward = bTransformer.Btransform()
-# get real part of back transform and normalize (C lib)
-uG_r = bTransformer.GetRealOut(backward) / bTransformer.N
+bTransformer.Btransform()
+# get real part of back transform and normalize 
+uG_r = bTransformer.out_real / bTransformer.N
 
 # set velocity as new grid spread (C lib)
-gridGen.SetGridSpread(grid, uG_r)
+gridGen.SetGridSpread(uG_r)
 
 # interpolate velocities on the particles (C lib)
-vP = Interpolate(species, grid, nP * dof)
+vP = Interpolate(speciesGen.species, gridGen.grid, nP * dof)
 
 # write species with interpolated vel to file (C lib)
-speciesGen.WriteSpecies(species, 'particles.txt')
+speciesGen.WriteSpecies('particles.txt')
 # write grid velocities
-gridGen.WriteGrid(grid, 'velocities.txt')
+gridGen.WriteGrid('velocities.txt')
 
 # free memory persisting b/w C and python (C lib)
-fTranformer.Clean(forward)
-fTranformer.Delete(forward)
-bTransformer.Clean(backward)
-bTransformer.Delete(backward)
-gridGen.Clean(grid)
-gridGen.Delete(grid)
-speciesGen.Clean(species)
-speciesGen.Delete(species)
+fTransformer.Clean()
+bTransformer.Clean()
+gridGen.Clean()
+speciesGen.Clean()
