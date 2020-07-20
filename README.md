@@ -29,3 +29,6 @@ The C++ library files are in `src` and `include`.
 The Python wrappers to the exposed C library, as well as currently available solvers are in `python`.
 
 Examples using the python wrappers and solvers can be found in `examples`.
+
+The `Doc` folder contains a presentation on the spreading/interpolation algorithm (`spread_interp.pdf`),
+and also a description of the triply periodic solver and Python interface (`stokes_solver_doc.pdf`).
