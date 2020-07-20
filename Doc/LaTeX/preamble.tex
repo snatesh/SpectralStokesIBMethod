@@ -1,0 +1,142 @@
+%==================================================
+% Standard
+%==================================================
+\documentclass[11pt]{article} % Page setup
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry} % Margin setup
+\usepackage[square,sort,comma,numbers]{natbib}  % Reference Formatting
+\usepackage{fancyhdr} % Header setup
+\usepackage[toc,page]{appendix}
+\usepackage[hang,flushmargin]{footmisc}
+\usepackage{textpos}
+
+%==================================================
+%Typesetting Packages
+%==================================================
+\usepackage[colorlinks=true,linkcolor=Blue,citecolor=Red,urlcolor=Blue]{hyperref} % sets the color of hyperlinks
+\usepackage{url} %Allows urls to be displayed properly
+\usepackage{amsmath,amssymb} % Highly recommended as an adjunct to serious mathematical typesetting; amssymb provides extended symbol collection
+\usepackage{textcomp} % Package supports Text Companion fonts (baht, bullet, copyright, musicalnote, onequarter, section, and yen)
+\usepackage{color} % Provides foreground (text, rules, etc.) and background color management
+\usepackage{colordvi} % Allows for using named colors when typsetting output
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor} % Extends the color package; several color tints, shades, tones, and mixes of arbitrary colors
+\definecolor{arsenic}{rgb}{0.23, 0.27, 0.29}
+\definecolor{color18}{rgb}{0.5,0.5,0.5} % Defines a color named "color18"
+\usepackage{bm} % bold math
+\usepackage{siunitx} % si units package 
+\newcommand{\SIper}{\SI[per-mode=symbol]} % Special command for the SI unit package
+\usepackage{enumerate} % Allows for the enumerate style to be changed 
+%\usepackage{enumitem}
+\usepackage{alphalph}
+\usepackage{setspace}
+\usepackage{blindtext}
+\usepackage{soul}
+\usepackage[tocindentauto]{tocstyle}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{multirow}
+\usepackage{mathtools}
+\usepackage{minted}
+\usepackage{afterpage}
+\usepackage{float}
+\usepackage{changepage}
+\numberwithin{equation}{section}
+%\usepackage{mathptmx}
+
+% ==================================================
+%Figure packages
+% ==================================================
+\usepackage{graphicx} % Include figure files
+\usepackage{rotating} % Performs all rotations including complete figures and tables with their captions ON ONE PAGE
+\usepackage{lscape} % Rotates the page contents but not the page number; can be applied across many pages
+\usepackage[font=scriptsize,format=plain,labelfont=bf]{caption} % Caption customization (also for tables)
+\usepackage{subcaption} % Provides support for subcaptions
+\usepackage{float} % Improved interface for defining float objects (figures and tables)
+\usepackage{wrapfig} % Allows figures or tables to have text wrapped around them
+\setlength{\parskip}{5pt} %Space between paragraphs
+\setlength{\parindent}{0pt} %Paragraph Indent size
+\usepackage{fancybox}
+\usepackage{mdframed}
+\usepackage{makeidx}
+\usepackage{tablefootnote}
+
+% ==================================================
+% Table packages
+% ==================================================
+\usepackage{longtable} % allow multipage tables
+\usepackage{multicol}
+\usepackage{multirow} % create tabular cells spanning multiple rows
+\usepackage{dcolumn} % Align table columns on decimal point
+\usepackage{threeparttable}
+\usepackage{lipsum,booktabs}
+
+% ==================================================
+% Section Formatting 
+% ==================================================
+\usepackage{sectsty}
+\allsectionsfont{\bfseries} %Sets ALL section font
+
+%Title, author, date formats	
+	\newcommand{\mytitle}[1]{\title{\bf{\textsf{#1}}}}
+	\newcommand{\myauthor}[1]{\author{\textsf{#1}}}
+	\newcommand{\mydate}[1]{\textsf{\date{#1}}}
+	\newcommand{\mytoday}{\textsf{\today}}
+
+%Section header formats	(Numbered)
+	\newcommand{\mysection}[2]{\vspace{-5px}\section{#1}\label{#2}\vspace{-10px}}
+	\newcommand{\myssection}[2]{\vspace{-5px}\subsection{#1}\label{#2}\vspace{-5px}}
+	\newcommand{\mysssection}[2]{\vspace{-5px}\subsubsection{#1}\label{#2}\vspace{-5px}}
+
+%Section header formats	(Unnumbered)	
+	\newcommand{\mysectionN}[2]{\vspace{-5px}\section*{#1}\label{#2}\vspace{-10px}}
+	\newcommand{\mysectionnonum}[2]{\vspace{-5px}\section*{#1}\label{#2}\vspace{-10px}}
+	\newcommand{\myssectionN}[2]{\vspace{-5px}\subsection*{#1}\label{#2}\vspace{-5px}}
+	\newcommand{\myssectionnonum}[2]{\vspace{-5px}\subsection*{#1}\label{#2}\vspace{-5px}}
+	\newcommand{\mysssectionN}[2]{\vspace{-5px}\subsubsection*{#1}\label{#2}\vspace{-5px}}
+	\newcommand{\mysssectionnonum}[2]{\vspace{-5px}\subsubsection*{#1}\label{#2}\vspace{-5px}}
+
+%Paragraph header formats		
+	\newcommand{\mypart}[2]{\part{#1}}
+	\newcommand{\mypara}[2]{\paragraph{#1}}
+	\newcommand{\myparaN}[2]{\paragraph*{#1}}
+	\newcommand{\myparanonum}[2]{\paragraph*{#1}}
+
+%References, etc.	
+	\newcommand{\myref}[2]{\hyperref[#2]{#1~\ref{#2}}}
+	\newcommand{\myrefexp}[3]{\hyperref[#3]{{#1}~{#2}}}
+	\newcommand{\hilight}[1]{\colorbox{yellow}{#1}}
+	\newcommand{\myfilename}[1]{\texttt{\textsf{#1}}}
+	\newcommand{\mywebsite}[1]{\myfilename{\bf #1}}
+	\newcommand{\commandline}[1]{\texttt{> #1}}
+	\newcommand{\plusplus}[1]{#1{}\texttt{++}}
+
+%Callout Box Creator	
+	\newcommand{\callout}[3]
+	{
+	\begin{wrapfigure}{#1}{#2\textwidth}
+	\vspace{-20pt}
+	\centering
+	\fbox{\parbox{#2\textwidth}{#3}}
+	\vspace{-10pt}
+	\end{wrapfigure}
+	}
+
+% ==================================================
+% Track changes and commenting packages/commands
+% ==================================================
+\usepackage{todonotes}
+	\newcommand{\sn}[1]{\todo[color=magenta!40,caption={}]{#1}}
+	
+\usepackage{comment}
+
+
+	%Other colors available 
+	%cyan
+	%green
+	%white
+	%darkgray
+	%brown
+	%olive
+	%pink
+	%purple
+	%violet
+

@@ -1,0 +1,96 @@
+%------------------------------------------------------------------
+% Preamble: provides useful commands and default settings
+%------------------------------------------------------------------
+\input{preamble}
+\usepackage{verbatimbox}
+\usepackage{wrapfig} 
+\usepackage{rotating}
+\usepackage{mathrsfs}
+\usepackage{cancel}
+\usepackage{pdfpages}
+\newcommand{\bs}{\boldsymbol}
+\newcommand{\kpar}{k_{\shortparallel}}
+\newcommand{\chebint}{\pmb{\mathscr{I}}}
+\newcommand{\chebdiff}{\pmb{\mathscr{D}}}
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+
+%---------
+% Beginning of document
+%------------------------------------------------------------------
+\begin{document}
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{4}
+% Your Name
+\begin{textblock*}{8cm}(15cm,-1cm)
+	\noindent {Sachin Natesh} 
+\end{textblock*}
+
+\mysection{Stokes flow in a triply periodic domain}{}
+We want to solve the Stokes equations,
+\begin{align}
+\displaystyle \eta \nabla^2 \bs u - \nabla p &= -\bs f, \label{momentum}\\
+\nabla \cdot \bs u &= 0, \label{continuity}
+\end{align}
+on a periodic domain $\Omega := (x,y,z) \in[0,L_x] \times [0,L_y] \times [0,L_z]$ subject to periodic boundary conditions. Here, the velocity $\bs u = \begin{pmatrix}u & v & w \end{pmatrix}^T$, and $\bs f = \begin{pmatrix}f & g & h \end{pmatrix}^T$ are smeared $\delta$-function sources representing particles with an effective hydrodynamic radius of $R_h$. Taking the divergence of \myref{Eq.}{momentum} and using \myref{Eq.}{continuity}, we find the pressure $p$ satisfies a Poisson equation
+\begin{equation}\label{poisson}
+\nabla^2 p = -\nabla \cdot \bs{f}
+\end{equation}
+Then, taking the Fourier transform of \myref{Eq.}{poisson} and using Fourier derivative symbols, we find
+\begin{equation}\label{psol}
+\hat{p} = \displaystyle -\frac{i\bs{k}}{k^2}\cdot \hat{\bs f},
+\end{equation}
+where $\bs k = \begin{pmatrix} k_x & k_y & k_z\end{pmatrix}^T$ is the vector of wave numbers in $x, y$ and $z$, $k^2 = ||\bs k||^2$, and $\hat{\cdot}$ denotes the Fourier transform. Now, if take the Fourier transform of \myref{Eq.}{momentum} and use \myref{Eq.}{psol}, we find that
+\begin{align}
+\hat{u} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{f} - \frac{ik_x}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
+\hat{v} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{g} - \frac{ik_y}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
+\hat{w} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{h} - \frac{ik_z}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big).
+\end{align}
+
+The above equations hold for $k \neq 0$. Since the net force on the unit cell must be 0, we accept 0 as the solution for the $k=0$ mode of the fluid velocity.
+
+In our uniform discretization, $k_i = \frac{2\pi j}{L_i}$, $j = -\frac{N_i}{2},\cdots, \frac{N_i}{2}-1$, with $N_i$ the number of points in direction $i=x,y,z$, and $L_i$ the length. The source term $\bs f$ consists of monopole and dipole terms with ``exponential of a semicircle" (ES) kernel \cite{barnett} envelopes $\Delta$;
+\begin{equation}
+\Delta(z;\alpha,\beta) = \displaystyle \frac{1}{\displaystyle \int_{-\alpha}^\alpha e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)}dz} \begin{cases}
+e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)},\quad &|\frac{z}{\alpha}| \leq 1\\
+0,\quad &\text{otherwise}.
+\end{cases}
+\end{equation}
+Here, $\alpha = w_ih_i/2$, where $h_i$ is the grid spacing in direction $i$, $w_i$ is the number of points to which we spread in that direction, and we've normalized the kernel so that integrating it over its support gives 1. The monopole term $\Delta_f$ represents the force exerted by particles on the fluid, while $\Delta_\tau$ relates to external torques $\bs \tau$ on the particles, given in \cite{lomholt} as
+\begin{equation}\label{fcm}
+\bs f(\bs x) = \displaystyle \sum_{k=1}^M \bs f(\bs y_k)\Delta_f(\bs x - \bs y_k) +\frac{1}{2}\nabla \times  \big(\bs{\tau}(\bs y_k)\Delta_\tau(\bs x - \bs y_k)\big) ,
+\end{equation}
+where $\bs y_k$ is the position of particle $k$. Once we've solved for the fluid velocity $\bs u$, we can obtain the linear and angular velocities of the particles through
+\begin{align}
+\bs V(\bs x) &= \displaystyle \int_\Omega \bs u(\bs y) \Delta_f(\bs y - \bs x)d\bs y = \bs J_f\bs U,\label{getpartvels}\\
+\bs \Omega(\bs x) &= \frac{1}{2}\displaystyle \int_\Omega \big(\nabla \times \bs u(\bs y)\big) \Delta_\tau(\bs y - \bs x)d\bs y = \frac{1}{2}\bs J_\tau(\nabla \times \bs U)\label{getpartvort}.
+\end{align}
+
+\myssection{Validation (translation-only)}{}
+Here, we will validate the efficacy of our method and implementation in computing particle velocities against Hasimoto's correction to Stokes drag law for cubic lattices of spheres \cite{hasimoto}, given by
+\begin{equation}\label{pbccorr}
+\displaystyle \frac{F}{\eta V} = \frac{6\pi R_h}{1 - 2.8373(R_h/L) + 4.19(R_h/L)^3 - 27.4(Rh/L)^6 + \text{h.o.t}},
+\end{equation}
+where $F$ is the force on the particle and $V$ is its velocity in one direction. We place a force of $\begin{pmatrix}1&0&0\end{pmatrix}$ on a particle of radius $R_h = 1.5539$ (this corresponds to ES kernel settings $w=6,\beta = 1.714, h = 1$) located randomly in the unit cell $[0,L]^3$. After spreading the force on the particle to the grid with the first term in \myref{Eq.}{fcm}, solving \myref{Eq.}{momentum} and interpolating the velocity on the particles with \myref{Eq.}{getpartvels}, we evaluate agreement with \myref{Eq.}{pbccorr}. The results, collected over several random placements of the particle and lattice lengths, are shown in the following figure.
+
+
+\mysection{A note on memory layout}{}
+Data on the grid are stored so that the fastest index is $l = 0,\cdots,\texttt{dof}$, followed by $i = 0,\cdots,N_x$, then $j = 0, \cdots, N_y$, and with $k = 0,\cdots ,N_z$ the slowest. This means that the \texttt{Grid} member \texttt{fG} is such that \texttt{fG}(k,j,i,l) = \texttt{fG[l + dof * (i + Nx * (j + Ny * k))]}.
+The reason for this has to do with parallelization and vectorization in the underlying spreading algorithm, where it's better if $x$ and $y$ vary faster than $z$. However, this isn't necessarily true for the solve stage. 
+
+In the Python interface, when we execute 
+
+\hspace{10pt} \texttt{fG = Spread(species, grid, Nx * Ny * Nz * dof)}, 
+
+the returned variable \texttt{fG} has been marshalled into a flat \texttt{numpy} array. If it makes sense (based on the solver) to \emph{copy} the memory layout to a new one, say in reverse order, one can use
+
+\hspace{10pt} \texttt{fG = np.transpose(np.reshape(fG, (Nz,Ny,Nx,dof)), (3,2,1,0)).copy()}
+
+Then, the \texttt{fG} variable will be indexed in memory like \texttt{fG[l,i,j,k]} with $k$ the fastest index.
+
+\clearpage
+\newpage
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{unsrt}
+%\bibliography{all_refs,NEMoSys,NEMoSys_extra,nemosysAV,autoverif_refs}
+\bibliography{stokes_solver}
+\end{document}

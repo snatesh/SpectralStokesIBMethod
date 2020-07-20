@@ -7,6 +7,17 @@ import numpy as np
 
 # See "extern" in Transform.h
 
+# TODO: Maybe combine real/complex output in C
+#       using interleaved format so we don't need
+#       get() functions in python wrapper
+#       Then, python useage would just look like
+#       
+#       fG = Spread(species, grid, Ntotal)
+#       fG_hat = Transform(fG, Nx, Ny, Nz, dof)
+#       fG_hat_r = fG_hat[0::2]
+#       fG_hat_i = fG_hat[1::2]
+#       fG_back = Transform(fG_hat_r, fG_hat_i, Nx, Ny, Nz, dof)
+
 libTransform = ctypes.CDLL('../lib/libtransform.so')
 
 class Transformer(object):
