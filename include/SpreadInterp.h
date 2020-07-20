@@ -24,6 +24,9 @@ class SpeciesList;
 void spread(SpeciesList& species, Grid& grid); 
 void interpolate(SpeciesList& species, Grid& grid);
 
+/* C wrapper for calling from Python. Any functions
+   defined here should also have their prototypes 
+   and wrappers defined in SpreadInterp.py */
 extern "C"
 {
   double* getGridSpread(Grid* grid);

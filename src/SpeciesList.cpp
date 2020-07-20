@@ -30,6 +30,41 @@ SpeciesList::SpeciesList() : xP(0), fP(0), betafP(0), alphafP(0),
                              xunwrap(0), yunwrap(0), zunwrap(0), zoffset(0)
 {}
 
+/* construct with external data by copy */
+SpeciesList::SpeciesList(const double* _xP, const double* _fP, const double* _radP, 
+                         const double* _betafP, const double* _cwfP, const unsigned short* _wfP, 
+                         const unsigned int _nP, const unsigned int _dof) :
+  nP(_nP), dof(_dof), alphafP(0), normfP(0), wfxP(0), wfyP(0), wfzP(0), normalized(false),
+  unique_monopoles(ESParticleSet(20,esparticle_hash)), xunwrap(0), yunwrap(0), zunwrap(0),
+  zoffset(0)
+{
+  xP = (double*) fftw_malloc(nP * 3 * sizeof(double));
+  fP = (double*) fftw_malloc(nP * dof * sizeof(double));
+  betafP = (double*) fftw_malloc(nP * sizeof(double));
+  radP = (double*) fftw_malloc(nP * sizeof(double));
+  cwfP = (double*) fftw_malloc(nP * sizeof(double));
+  alphafP = (double*) fftw_malloc(nP * sizeof(double));
+  normfP = (double*) fftw_malloc(nP * sizeof(double));
+  wfP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+  wfxP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+  wfyP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+  wfzP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+  for (unsigned int i = 0; i < nP; ++i)
+  {
+    xP[3 * i] = _xP[3 * i];
+    xP[1 + 3 * i] = _xP[1 + 3 * i];
+    xP[2 + 3 * i] = _xP[2 + 3 * i];
+    radP[i] = _radP[i];
+    betafP[i] = _betafP[i];
+    cwfP[i] = _cwfP[i];
+    wfP[i] = _wfP[i];
+    for (unsigned int j = 0; j < dof; ++j)
+    {
+      fP[j + dof * i] = _fP[j + dof * i];
+    }
+  }
+  this->setup();
+}
 
 void SpeciesList::setup()
 {

@@ -3,6 +3,8 @@ import numpy as np
 
 # Python wrappers for C library Spread/Interp routines
 
+# See "extern" in SpreadInterp.h
+
 libSpreadInterp = ctypes.CDLL('../lib/libspreadInterp.so')
 
 libSpreadInterp.Spread.argtypes = [ctypes.c_void_p, ctypes.c_void_p]

@@ -40,7 +40,9 @@ struct Transform
   void cleanup();
 };
 
-// C wrapper for calling from Python
+/* C wrapper for calling from Python. Any functions
+   defined here should also have their prototypes 
+   and wrappers defined in Transform.py */
 extern "C"
 {
   Transform* Ftransform(const double* in_real, const unsigned int Nx,

@@ -59,16 +59,20 @@ struct Grid
   void writeCoords(const char* fname) const;
 };
 
-// C wrapper for calling from Python
+/* C wrapper for calling from Python. Any functions
+   defined here should also have their prototypes 
+   and wrappers defined in Grid.py */
 extern "C"
 {
-  Grid* MakeTP(const double Lx, const double Ly, const double Lz,
-               const double hx, const double hy, const double hz,
-               const unsigned int Nx, const unsigned int Ny,
-               const unsigned int Nz, const unsigned int dof)
+  Grid* MakeGrid(const double Lx, const double Ly, const double Lz,
+                 const double hx, const double hy, const double hz,
+                 const unsigned int Nx, const unsigned int Ny,
+                 const unsigned int Nz, const unsigned int dof,
+                 const unsigned int periodicity)
   {
     Grid* grid = new Grid();
-    grid->makeTP(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof);
+    if (periodicity == 3) {grid->makeTP(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof);}
+    else if (periodicity == 2) {grid->makeDP(Lx, Ly, Lz, hx, hy, Nx, Ny, Nz, dof);}
     return grid; 
   }
 
@@ -77,7 +81,7 @@ extern "C"
   double* getGridSpread(Grid* g) {return g->fG;}
   void setGridSpread(Grid* g, double* f) 
   { 
-    // deep copy
+    // copy
     for (unsigned int i = 0; i < g->Nx * g->Ny * g->Nz * g->dof; ++i)
     { 
       g->fG[i] = f[i];

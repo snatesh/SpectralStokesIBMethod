@@ -65,6 +65,10 @@ struct SpeciesList
   
   /* empty/null ctor */
   SpeciesList();
+  /* construct with external data by copy */
+  SpeciesList(const double* xP, const double* fP, const double* radP, 
+              const double* betafP, const double* cwfP, const unsigned short* wfP, 
+              const unsigned int nP, const unsigned int dof);
   /* setup SpeciesList based on what caller has provided */
   void setup(Grid& grid);
   void setup(); 
@@ -86,16 +90,35 @@ struct SpeciesList
 };
 
 
-// C wrapper for calling from Python
+/* C wrapper for calling from Python. Any functions
+   defined here should also have their prototypes 
+   and wrappers defined in SpeciesList.py */
 extern "C"
 {
+  /* make a SpeciesList from external data */
+  SpeciesList* MakeSpecies(const double* xP, const double* fP, const double* radP, 
+                           const double* betafP, const double* cwfP, const unsigned short* wfP, 
+                           const unsigned int nP, const unsigned int dof)
+  {
+    SpeciesList* species = new SpeciesList(xP, fP, radP, betafP, cwfP, wfP, nP, dof);
+    return species;
+  }
+
+  /* setup the species on the grid (builds grid locators)*/
+  void Setup(SpeciesList* species, Grid* grid)
+  {
+    species->setup(*grid);  
+  }
+
+  /* create random configuration given the grid and number of particles 
+     NOTE: this calls Setup() internaly */
   SpeciesList* RandomConfig(Grid* grid, const unsigned int nP)
   {
     SpeciesList* species = new SpeciesList();
     species->randInit(*grid, nP);
     return species;
   } 
-  
+ 
   double* getPoints(SpeciesList* species) {return species->xP;}
   double* getForces(SpeciesList* species) {return species->fP;}
   double* getSpeciesInterp(SpeciesList* species) {return species->fP;}
