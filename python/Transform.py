@@ -101,10 +101,6 @@ class Transformer(object):
     self.out_real = np.ctypeslib.as_array(libTransform.getRealOut(self.transform), shape=(self.Ntotal,))
     self.out_complex = np.ctypeslib.as_array(libTransform.getComplexOut(self.transform), shape=(self.Ntotal,))
 
-  # Python wrapper for the Btransform(...) C lib routine
-  # This computes the backward plan and executes a backward
-  # transform on the real+complex input data.
-  # It returns a pointer to the Transform struct 
   def Btransform(self):
     """
     Python wrapper for the Btransform(...) C lib routine.
