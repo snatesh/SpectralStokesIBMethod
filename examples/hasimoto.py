@@ -9,7 +9,7 @@ from SpreadInterp import *
 from Transform import *
 from Solvers import TriplyPeriodicStokes
 
-nTrials = 100
+nTrials = 50
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
 

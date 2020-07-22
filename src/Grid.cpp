@@ -184,9 +184,8 @@ bool Grid::validState() const
     // minimal check
     if (not (fG))
     {
-      throw Exception("Force/Vel/Pressure and particle-search arrays \
-                       must all be allocated, but at least one is null.",
-                      __func__, __FILE__, __LINE__);
+      throw Exception("Grid data array fG must be allocated, \
+                       but at least one is null.", __func__, __FILE__, __LINE__);
     }
     // uniform x y z
     if (hx > 0 && hy > 0 && hz > 0 && (xG || yG || zG))

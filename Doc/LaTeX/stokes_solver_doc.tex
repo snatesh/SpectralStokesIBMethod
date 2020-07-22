@@ -37,13 +37,13 @@ on a periodic domain $\Omega := (x,y,z) \in[0,L_x] \times [0,L_y] \times [0,L_z]
 \end{equation}
 Then, taking the Fourier transform of \myref{Eq.}{poisson} and using Fourier derivative symbols, we find
 \begin{equation}\label{psol}
-\hat{p} = \displaystyle -\frac{i\bs{k}}{k^2}\cdot \hat{\bs f},
+\hat{p} = \displaystyle -\frac{i\bs{k} \cdot \hat{\bs f}}{k^2},
 \end{equation}
 where $\bs k = \begin{pmatrix} k_x & k_y & k_z\end{pmatrix}^T$ is the vector of wave numbers in $x, y$ and $z$, $k^2 = ||\bs k||^2$, and $\hat{\cdot}$ denotes the Fourier transform. Now, if take the Fourier transform of \myref{Eq.}{momentum} and use \myref{Eq.}{psol}, we find that
 \begin{align}
-\hat{u} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{f} - \frac{ik_x}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
-\hat{v} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{g} - \frac{ik_y}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
-\hat{w} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{h} - \frac{ik_z}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big).
+\hat{u} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{f} + \frac{ik_x}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
+\hat{v} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{g} + \frac{ik_y}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big),\\
+\hat{w} &= \displaystyle \frac{1}{\eta k^2}\Big(\hat{h} + \frac{ik_z}{k^2}\big(ik_x \hat{f} + ik_y \hat{g} + ik_z \hat{h}\big)\Big).
 \end{align}
 
 The above equations hold for $k \neq 0$. Since the net force on the unit cell must be 0, we accept 0 as the solution for the $k=0$ mode of the fluid velocity.

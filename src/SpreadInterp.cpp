@@ -38,7 +38,7 @@ void spreadTP(SpeciesList& species, Grid& grid)
     const unsigned short wx = std::round(2 * alphaf / grid.hxeff);
     const unsigned short wy = std::round(2 * alphaf / grid.hyeff);
     const unsigned short wz = std::round(2 * alphaf / grid.hzeff);
-    //std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << std::endl;
+    std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << std::endl;
     const unsigned short w2 = wx * wy;
     const unsigned int kersz = w2 * wz; 
     const unsigned int subsz = w2 * grid.Nzeff;
@@ -175,7 +175,7 @@ void interpTP(SpeciesList& species, Grid& grid)
     const unsigned int subsz = w2 * grid.Nzeff;
     const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
     const double weight = grid.hxeff * grid.hyeff * grid.hzeff;
-    //std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << " " << weight << std::endl;
+    std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << " " << weight << std::endl;
     // loop over w^2 groups of columns
     for (unsigned int izero = 0; izero < wx; ++izero)
     {

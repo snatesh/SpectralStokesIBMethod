@@ -24,9 +24,9 @@ def TriplyPeriodicStokes(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz):
   """
   Ntotal = Nx * Ny * Nz * 3
   # separate x,y,z components
-  f_hat = fG_hat_r[0::3] + 1j * fG_hat_i[0::3]
-  g_hat = fG_hat_r[1::3] + 1j * fG_hat_i[1::3]
-  h_hat = fG_hat_r[2::3] + 1j * fG_hat_i[2::3]
+  f_hat = (fG_hat_r[0::3] + 1j * fG_hat_i[0::3])
+  g_hat = (fG_hat_r[1::3] + 1j * fG_hat_i[1::3])
+  h_hat = (fG_hat_r[2::3] + 1j * fG_hat_i[2::3])
   # wave numbers
   kvec_x = 2*np.pi*np.concatenate((np.arange(0,np.floor(Nx/2)),\
                                    np.arange(-1*np.ceil(Nx/2),0)), axis=None) / Lx
@@ -43,9 +43,9 @@ def TriplyPeriodicStokes(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz):
                   out = np.zeros_like(f_hat), where = Ksq != 0, dtype = np.complex) 
   I2 = np.divide(1, eta * Ksq, out = np.zeros_like(Ksq), where = Ksq != 0, dtype = np.double)
   # solve for Fourier coeffs of velocity
-  u_hat = I2 * (f_hat - (1j * Kx * rhs))
-  v_hat = I2 * (g_hat - (1j * Ky * rhs))
-  w_hat = I2 * (h_hat - (1j * Kz * rhs))
+  u_hat = I2 * (f_hat + (1j * Kx * rhs))
+  v_hat = I2 * (g_hat + (1j * Ky * rhs))
+  w_hat = I2 * (h_hat + (1j * Kz * rhs))
   # ignore k = 0
   u_hat[0] = 0
   v_hat[0] = 0
