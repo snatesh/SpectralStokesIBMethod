@@ -17,8 +17,8 @@ for iL in np.arange(0,Ls.size):
   for iTrial in np.arange(0,nTrials):
     # grid info 
     Nx = Ny = Nz = int(Ls[iL]); dof = 3 
-    hx = hy = hz = 1.0 
-    Lx = Ly = Lz = Ls[iL] 
+    hx = hy = hz = 0.5 
+    Lx = Ly = Lz = hx * Nx 
     # number of particles
     nP = 1
     # viscocity
@@ -40,7 +40,7 @@ for iL in np.arange(0,Ls.size):
     # width of ES kernel given dimensionless radii (from table)
     wfP = np.array([6], dtype = np.ushort)
     # actual radii of the particles
-    radP = np.array([cwfP[0]])
+    radP = hx * np.array([cwfP[0]])
     
     # instantiate the python grid wrapper
     gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, periodicity)
@@ -92,6 +92,6 @@ for iL in np.arange(0,Ls.size):
     speciesGen.Clean()
   print(iL)
 
-np.savetxt('x_mobility.txt', mobx)
+np.savetxt('x_mobility_nonUnit.txt', mobx)
 
 

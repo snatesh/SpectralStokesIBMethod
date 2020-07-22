@@ -25,13 +25,54 @@
 	\noindent {Sachin Natesh} 
 \end{textblock*}
 
-\mysection{Stokes flow in a triply periodic domain}{}
-We want to solve the Stokes equations,
+\mysection{Stokes flow}{}
+This repository concerns the solution of Stokes equations,
 \begin{align}
 \displaystyle \eta \nabla^2 \bs u - \nabla p &= -\bs f, \label{momentum}\\
 \nabla \cdot \bs u &= 0, \label{continuity}
 \end{align}
-on a periodic domain $\Omega := (x,y,z) \in[0,L_x] \times [0,L_y] \times [0,L_z]$ subject to periodic boundary conditions. Here, the velocity $\bs u = \begin{pmatrix}u & v & w \end{pmatrix}^T$, and $\bs f = \begin{pmatrix}f & g & h \end{pmatrix}^T$ are smeared $\delta$-function sources representing particles with an effective hydrodynamic radius of $R_h$. Taking the divergence of \myref{Eq.}{momentum} and using \myref{Eq.}{continuity}, we find the pressure $p$ satisfies a Poisson equation
+on some domain $\Omega := (x,y,z) \in[0,L_x] \times [0,L_y] \times [0,L_z]$ subject to some boundary conditions (BCs). Here, the velocity $\bs u = \begin{pmatrix}u & v & w \end{pmatrix}^T$, and $\bs f = \begin{pmatrix}f & g & h \end{pmatrix}^T$ are smeared $\delta$-function sources representing particles with an effective hydrodynamic radius of $R_h$. The boundary conditions, imposed on the faces of $\Omega$, can be combinations of \texttt{open}, \texttt{periodic}, \texttt{mirror wall} or \texttt{inverse mirror wall}. The latter two correspond to a confined geometry, and some BC must be prescribed at both endpoints of each axis.
+
+The source term $\bs f$ consists of monopole and dipole terms with ``exponential of a semicircle" (ES) kernel \cite{barnett} envelopes $\Delta$;
+\begin{equation}
+\Delta(z;\alpha,\beta) = \displaystyle \frac{1}{\displaystyle \int_{-\alpha}^\alpha e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)}dz} \begin{cases}
+e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)},\quad &|\frac{z}{\alpha}| \leq 1\\
+0,\quad &\text{otherwise}.
+\end{cases}
+\end{equation}
+Here, $\alpha = w_ih_i/2$, where $h_i$ is the grid spacing in direction $i$ ($x,y$ or $z$), $w_i$ is the number of points to which we spread in that direction, and we've normalized the kernel so that integrating it over its support gives 1. The monopole term $\Delta_f$ represents the force exerted by particles on the fluid, while the dipole term $\Delta_\tau$ relates to external torques $\bs \tau$ on the particles, given in \cite{lomholt} as
+\begin{equation}\label{fcm}
+\bs f(\bs x) = \displaystyle \sum_{k=1}^M \bs f(\bs y_k)\Delta_f(\bs x - \bs y_k) +\frac{1}{2}\nabla \times  \big(\bs{\tau}(\bs y_k)\Delta_\tau(\bs x - \bs y_k)\big) ,
+\end{equation}
+where $\bs y_k$ is the position of particle $k$. Once we've solved for the fluid velocity $\bs u$, we can obtain the linear and angular velocities of the particles through
+\begin{align}
+\bs V(\bs y_k) &= \displaystyle \int_\Omega \bs u(\bs x) \Delta_f(\bs x - \bs y_k)d\bs x,\label{getpartvels}\\
+\bs \Omega(\bs y_k) &= \frac{1}{2}\displaystyle \int_\Omega \big(\nabla \times \bs u(\bs x)\big) \Delta_\tau(\bs x - \bs y_k)d\bs x\label{getpartvort}.
+\end{align}
+
+Note, the kernel parameters given above correspond to uniform grids. When the grid is not uniform in a given direction, we use the relation
+\begin{equation}
+\alpha = \frac{w R_h}{2 c_{f|\tau}(w)},
+\end{equation}
+where $w$ and $c_{f|\tau}(w)$ are the width and dimensionless radius (of monopole or dipole) of the ES kernel found in tables listed in the report deriving the DP-wall solver (ADD HERE).
+\mysection{Describe the SpreadInterp library}{}
+\myssection{How to handle various BCs}{}
+\mysection{Describe the Python interface}{}
+\myssection{A note on memory layout}{}
+Data on the grid are stored so that the fastest index is $l = 0,\cdots,\texttt{dof}$, followed by $i = 0,\cdots,N_x$, then $j = 0, \cdots, N_y$, and with $k = 0,\cdots ,N_z$ the slowest. This means that the \texttt{Grid} member \texttt{fG} is such that \texttt{fG}(k,j,i,l) = \texttt{fG[l + dof * (i + Nx * (j + Ny * k))]}.
+The reason for this has to do with parallelization and vectorization in the underlying spreading algorithm, where it's better if $x$ and $y$ vary faster than $z$. However, this isn't necessarily true for the solve stage. 
+
+In the Python interface, when we execute 
+
+\hspace{10pt} \texttt{fG = Spread(species, grid, Nx * Ny * Nz * dof)}, 
+
+the returned variable \texttt{fG} has been marshalled into a flat \texttt{numpy} array. If it makes sense (based on the solver) to \emph{copy} the memory layout to a new one, say in reverse order, one can use
+
+\hspace{10pt} \texttt{fG = np.transpose(np.reshape(fG, (Nz,Ny,Nx,dof)), (3,2,1,0)).copy()}
+
+Then, the \texttt{fG} variable will be indexed in memory like \texttt{fG[l,i,j,k]} with $k$ the fastest index. Note, without the \texttt{copy()} operation appended at the end, we will only get a new \emph{view} of the memory layout, while the actual layout will remain unchanged.
+\mysection{Triply periodic solver}{}
+Suppose now that $\Omega$ is a triply periodic domain and we impose periodic boundary conditions on $\bs u$ and $p$. Taking the divergence of \myref{Eq.}{momentum} and using \myref{Eq.}{continuity}, we find the pressure $p$ satisfies a Poisson equation
 \begin{equation}\label{poisson}
 \nabla^2 p = -\nabla \cdot \bs{f}
 \end{equation}
@@ -48,44 +89,21 @@ where $\bs k = \begin{pmatrix} k_x & k_y & k_z\end{pmatrix}^T$ is the vector of 
 
 The above equations hold for $k \neq 0$. Since the net force on the unit cell must be 0, we accept 0 as the solution for the $k=0$ mode of the fluid velocity.
 
-In our uniform discretization, $k_i = \frac{2\pi j}{L_i}$, $j = -\frac{N_i}{2},\cdots, \frac{N_i}{2}-1$, with $N_i$ the number of points in direction $i=x,y,z$, and $L_i$ the length. The source term $\bs f$ consists of monopole and dipole terms with ``exponential of a semicircle" (ES) kernel \cite{barnett} envelopes $\Delta$;
-\begin{equation}
-\Delta(z;\alpha,\beta) = \displaystyle \frac{1}{\displaystyle \int_{-\alpha}^\alpha e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)}dz} \begin{cases}
-e^{\beta(\sqrt{1-(\frac{z}{\alpha})^2}-1)},\quad &|\frac{z}{\alpha}| \leq 1\\
-0,\quad &\text{otherwise}.
-\end{cases}
-\end{equation}
-Here, $\alpha = w_ih_i/2$, where $h_i$ is the grid spacing in direction $i$, $w_i$ is the number of points to which we spread in that direction, and we've normalized the kernel so that integrating it over its support gives 1. The monopole term $\Delta_f$ represents the force exerted by particles on the fluid, while $\Delta_\tau$ relates to external torques $\bs \tau$ on the particles, given in \cite{lomholt} as
-\begin{equation}\label{fcm}
-\bs f(\bs x) = \displaystyle \sum_{k=1}^M \bs f(\bs y_k)\Delta_f(\bs x - \bs y_k) +\frac{1}{2}\nabla \times  \big(\bs{\tau}(\bs y_k)\Delta_\tau(\bs x - \bs y_k)\big) ,
-\end{equation}
-where $\bs y_k$ is the position of particle $k$. Once we've solved for the fluid velocity $\bs u$, we can obtain the linear and angular velocities of the particles through
-\begin{align}
-\bs V(\bs x) &= \displaystyle \int_\Omega \bs u(\bs y) \Delta_f(\bs y - \bs x)d\bs y = \bs J_f\bs U,\label{getpartvels}\\
-\bs \Omega(\bs x) &= \frac{1}{2}\displaystyle \int_\Omega \big(\nabla \times \bs u(\bs y)\big) \Delta_\tau(\bs y - \bs x)d\bs y = \frac{1}{2}\bs J_\tau(\nabla \times \bs U)\label{getpartvort}.
-\end{align}
+In our uniform discretization, $k_i = \frac{2\pi j}{L_i}$, $j = -\frac{N_i}{2},\cdots, \frac{N_i}{2}-1$, with $N_i$ the number of points in direction $i=x,y,z$, and $L_i$ the length. 
 
 \myssection{Validation (translation-only)}{}
 Here, we will validate the efficacy of our method and implementation in computing particle velocities against Hasimoto's correction to Stokes drag law for cubic lattices of spheres \cite{hasimoto}, given by
 \begin{equation}\label{pbccorr}
 \displaystyle \frac{F}{\eta V} = \frac{6\pi R_h}{1 - 2.8373(R_h/L) + 4.19(R_h/L)^3 - 27.4(Rh/L)^6 + \text{h.o.t}},
 \end{equation}
-where $F$ is the force on the particle and $V$ is its velocity in one direction. We place a force of $\begin{pmatrix}1&0&0\end{pmatrix}$ on a particle of radius $R_h = 1.5539$ (this corresponds to ES kernel settings $w=6,\beta = 1.714, h = 1$) located randomly in the unit cell $[0,L]^3$. After spreading the force on the particle to the grid with the first term in \myref{Eq.}{fcm}, solving \myref{Eq.}{momentum} and interpolating the velocity on the particles with \myref{Eq.}{getpartvels}, we evaluate agreement with \myref{Eq.}{pbccorr}. The results, collected over several random placements of the particle and lattice lengths, are shown in the following figure.
+where $F$ is the force on the particle and $V$ is its velocity in one direction. We place a force of $\begin{pmatrix}1&0&0\end{pmatrix}$ on a particle of radius $R_h = 1.5539h$ located randomly in the unit cell $[0,L]^3$. This $R_h$ corresponds to ES kernel settings $w=6,\beta = 1.714 w$ with 0.02\% error from translational invariance. After spreading the force on the particle to the grid with the first term in \myref{Eq.}{fcm}, solving \myref{Eq.}{momentum} and interpolating the velocity on the particles with \myref{Eq.}{getpartvels}, we evaluate agreement with \myref{Eq.}{pbccorr}. The results, collected over several random placements of the particle and lattice lengths, are shown in the following figure.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\linewidth]{./Figures/L_extrap_hasimoto_TP}
+	\caption{In the top panel, we check that the normalized mobility extrapolates to approximately 1 for unit (blue) and non-unit (red) grid spacing $h$ as $L \to \infty$. The bottom figure assesses the relative agreement with Hasimoto's periodic correction to Stokes drag law \myref{Eq.}{pbccorr} for unit (blue) and non-unit (red) $h$. We achieve around 3 digits of accuracy, and the spread in the data corresponds well to the 0.02\% error due to loss in translational invariance of the ES kernel.}\label{fig4}
+\end{figure}
 
 
-\mysection{A note on memory layout}{}
-Data on the grid are stored so that the fastest index is $l = 0,\cdots,\texttt{dof}$, followed by $i = 0,\cdots,N_x$, then $j = 0, \cdots, N_y$, and with $k = 0,\cdots ,N_z$ the slowest. This means that the \texttt{Grid} member \texttt{fG} is such that \texttt{fG}(k,j,i,l) = \texttt{fG[l + dof * (i + Nx * (j + Ny * k))]}.
-The reason for this has to do with parallelization and vectorization in the underlying spreading algorithm, where it's better if $x$ and $y$ vary faster than $z$. However, this isn't necessarily true for the solve stage. 
-
-In the Python interface, when we execute 
-
-\hspace{10pt} \texttt{fG = Spread(species, grid, Nx * Ny * Nz * dof)}, 
-
-the returned variable \texttt{fG} has been marshalled into a flat \texttt{numpy} array. If it makes sense (based on the solver) to \emph{copy} the memory layout to a new one, say in reverse order, one can use
-
-\hspace{10pt} \texttt{fG = np.transpose(np.reshape(fG, (Nz,Ny,Nx,dof)), (3,2,1,0)).copy()}
-
-Then, the \texttt{fG} variable will be indexed in memory like \texttt{fG[l,i,j,k]} with $k$ the fastest index.
 
 \clearpage
 \newpage
