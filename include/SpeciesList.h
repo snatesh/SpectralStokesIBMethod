@@ -53,7 +53,7 @@ struct Grid;
 struct SpeciesList
 {
   double *xP, *fP;
-  double *xunwrap, *yunwrap, *zunwrap;
+  double *xunwrap, *yunwrap, *zunwrap, *pt_wts;
   unsigned int *zoffset;
   double *radP, *betafP, *normfP, *alphafP, *cwfP; 
   unsigned short *wfP, *wfxP, *wfyP, *wfzP;
@@ -80,8 +80,8 @@ struct SpeciesList
   void findUniqueKernels();
   /* locate the particles in terms of the columns of the grid */
   void locateOnGrid(Grid& grid);
-  void locateOnGridTP(Grid& grid);
-  void locateOnGridDP(Grid& grid);
+  void locateOnGridUnifZ(Grid& grid);
+  void locateOnGridNonUnifZ(Grid& grid);
   /* write current state of SpeciesList to ostream */
   void writeSpecies(std::ostream& outputStream) const; 
   void writeSpecies(const char* fname) const;

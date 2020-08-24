@@ -17,7 +17,8 @@ Lx = Nx * hx; Ly = Ny * hy; Lz = Nz * hz;
 nP = 100
 # viscocity
 eta = 1/4/np.sqrt(np.pi)
-periodicity = 3
+# boundary conditions specified for ends of each axis
+BCs = np.array([1,1,1,1,1,1], dtype = np.uintc)
 
 # particle positions
 xP = np.zeros(3 * nP, dtype = np.double)
@@ -53,7 +54,7 @@ for iP in np.arange(0,nP):
 
 
 # instantiate the python grid wrapper
-gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, periodicity)
+gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, BCs)
 # instantiate and define the grid with C lib call
 # this sets the GridGen.grid member to a pointer to a C++ Grid struct
 gridGen.Make()
@@ -86,15 +87,15 @@ U_hat_r, U_hat_i = TriplyPeriodicStokes(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx,
 # instantiate back transform wrapper with velocities on grid (C lib)
 bTransformer = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
 bTransformer.Btransform()
-# get real part of back transform and normalize 
-uG_r = bTransformer.out_real / bTransformer.N
+# get real part of back transform
+uG_r = bTransformer.out_real
 
 # set velocity as new grid spread (C lib)
 gridGen.SetGridSpread(uG_r)
 
 # interpolate velocities on the particles (C lib)
 vP = Interpolate(speciesGen.species, gridGen.grid, nP * dof)
-
+print(vP)
 # write species with interpolated vel to file (C lib)
 speciesGen.WriteSpecies('particles.txt')
 # write grid velocities

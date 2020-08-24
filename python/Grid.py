@@ -13,14 +13,15 @@ class GridGen(object):
   Attributes:
     Lx, Ly, Lz (double) - length in x,y and z
     hx, hy, hz (double) - grid spacing in x, y and z
+                        - if zpts/zwts are provided, hz is ignored
     Nx, Ny, Nz (int) - number of points in x,y and z
     N (int) = Nx * Ny * Nz
     dof (int) - degrees of freedom
     Ntotal (int) = N * dof
-    periodicity (int) - of the domain (can be 2 or 3 for now) 
     grid (ptr to C++ struct) - a pointer to the generated C++ Grid struct  
   """
-  def __init__(self, _Lx, _Ly, _Lz, _hx, _hy, _hz, _Nx, _Ny, _Nz, _dof, _periodicity):
+  def __init__(self, _Lx, _Ly, _Lz, _hx, _hy, _hz, _Nx, _Ny, _Nz, _dof, _BCs, 
+               _zpts = None, _zwts = None):
     """ 
     The constructor for the GridGen class.
     
@@ -31,7 +32,6 @@ class GridGen(object):
       N (int) = Nx * Ny * Nz
       dof (int) - degrees of freedom
       Ntotal (int) = N * dof
-      periodicity (int) - of the domain (can be 2 or 3 for now) 
 
     Side Effects:
       The prototypes for relevant functions from the 
@@ -39,11 +39,33 @@ class GridGen(object):
       to the "extern" definition in Grid.h should be
       declared here.
     """ 
-    libGrid.MakeGrid.argtypes = [ctypes.c_double, ctypes.c_double, ctypes.c_double,
-                                 ctypes.c_double, ctypes.c_double, ctypes.c_double,
-                                 ctypes.c_uint, ctypes.c_uint, ctypes.c_uint, 
-                                 ctypes.c_uint, ctypes.c_uint]
+    libGrid.MakeGrid.argtypes = None
     libGrid.MakeGrid.restype = ctypes.c_void_p
+    
+    libGrid.SetL.argtypes = [ctypes.c_void_p, ctypes.c_double, 
+                             ctypes.c_double, ctypes.c_double]
+    libGrid.SetL.restype = None
+    
+    libGrid.SetN.argtypes = [ctypes.c_void_p, ctypes.c_uint, 
+                             ctypes.c_uint, ctypes.c_uint]
+    libGrid.SetN.restype = None
+    
+    libGrid.Seth.argtypes = [ctypes.c_void_p, ctypes.c_double, 
+                             ctypes.c_double, ctypes.c_double]
+    libGrid.Seth.restype = None
+    
+    libGrid.SetZ.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double),
+                             ctypes.POINTER(ctypes.c_double)]
+    libGrid.SetZ.restype = None
+    
+    libGrid.SetBCs.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)]
+    libGrid.SetBCs.restype = None
+  
+    libGrid.Setdof.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+    libGrid.Setdof.restype = None
+  
+    libGrid.SetupGrid.argtypes = [ctypes.c_void_p]
+    libGrid.SetupGrid.restype = None
     
     libGrid.CleanGrid.argtypes = [ctypes.c_void_p]
     libGrid.CleanGrid.restype = None     
@@ -57,8 +79,8 @@ class GridGen(object):
     libGrid.WriteCoords.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     libGrid.WriteCoords.restype = None
   
-    libGrid.setGridSpread.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)] 
-    libGrid.setGridSpread.restype = None 
+    libGrid.SetGridSpread.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)] 
+    libGrid.SetGridSpread.restype = None 
 
     # length in x,y,z
     self.Lx = _Lx
@@ -74,11 +96,14 @@ class GridGen(object):
     self.Nz = _Nz
     # degrees of freedom of data on the grid
     self.dof = _dof
-    # periodicity of the grid ( 1 <= periodicity <= 3)
-    self.periodicity = _periodicity
+    # z grid and weights, if provided
+    self.zpts = _zpts
+    self.zwts = _zwts
     # getting total nums
     self.N = self.Nx * self.Ny * self.Nz
     self.Ntotal = self.N * self.dof
+    # boundary conditions
+    self.BCs = _BCs 
     # pointer to C++ Grid struct
     self.grid = None
 
@@ -92,15 +117,25 @@ class GridGen(object):
 
     Parameters: None
     Side Effects:
-      self.grid is assigned the pointer to the C++ Grid instance
+      self.grid is assigned the pointer to the C++ Grid instance, 
+      and the struct pointed to is initialized with attributes of self
     """
-    self.grid = libGrid.MakeGrid(self.Lx, self.Ly, self.Lz, self.hx, self.hy, self.hz,\
-                                 self.Nx, self.Ny, self.Nz, self.dof, self.periodicity) 
-  
+    self.grid = libGrid.MakeGrid();
+    libGrid.SetL(self.grid, self.Lx, self.Ly, self.Lz)
+    libGrid.SetN(self.grid, self.Nx, self.Ny, self.Nz)  
+    if self.zpts is None:
+      libGrid.Seth(self.grid, self.hx, self.hy, self.hz)
+    else:
+      libGrid.Seth(self.grid, self.hx, self.hy, 0.0)
+      libGrid.SetZ(self.grid, self.zpts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
+                   self.zwts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
+    libGrid.SetBCs(self.grid, self.BCs.ctypes.data_as(ctypes.POINTER(ctypes.c_uint))) 
+    libGrid.Setdof(self.grid, self.dof) 
+    libGrid.SetupGrid(self.grid)  
 
   def SetGridSpread(self, new_data):
     """
-    Python wrapper for the setGridSpread(grid) C lib routine
+    Python wrapper for the SetGridSpread(grid) C lib routine
     This sets new data on the Grid by overwriting
     the data member grid.fG with new_data
     
@@ -109,7 +144,7 @@ class GridGen(object):
     Side Effects:
       self.grid.fG (in C) is overwritten with new_data, so the data pointed to by grid is changed
     """
-    libGrid.setGridSpread(self.grid, new_data.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
+    libGrid.SetGridSpread(self.grid, new_data.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
 
   def WriteGrid(self, fname):
     """

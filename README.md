@@ -8,8 +8,10 @@ You will need to `apt install` at least the following dependencies:
 * cmake
 * libomp-dev
 * gcc 7.5.0 or later (eg. module load gcc-9.2 on cims machines)
-
-The python modules use Python 3+ and rely on numpy (eg. from pip)
+* FFTW
+* LAPACK and the C interface LAPACKE 
+    (https://www.assistedcoding.eu/2017/11/04/how-to-install-lapacke-ubuntu/)
+* Python 3+ with NumPy/SciPy (latter only used for diags)
 
 ### Build Instructions ###
 Now, execute the following from the top of the source tree: 

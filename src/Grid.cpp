@@ -7,14 +7,19 @@
 
 Grid::Grid() : fG(0), fG_unwrap(0), xG(0), yG(0), zG(0), firstn(0), 
                nextn(0), number(0), Nx(0), Ny(0), Nz(0), Lx(0), 
-               Ly(0), Lz(0), hx(0), hy(0), hz(0), periodicity(-1),
-               Nxeff(0), Nyeff(0), Nzeff(0), hxeff(0), hyeff(0), hzeff(0),
+               Ly(0), Lz(0), hx(0), hy(0), hz(0), Nxeff(0), 
+               Nyeff(0), Nzeff(0), hxeff(0), hyeff(0), hzeff(0),
                has_locator(false), xdescend(false), ydescend(false),
-               zdescend(false), dof(0), zG_wts(0)
+               zdescend(false), dof(0), zG_wts(0), has_bc(false), unifZ(false)
 {}
 
 void Grid::setup()
 {
+  // allocate interior grid
+  if (!this->fG) 
+  {
+    this->fG = (double*) fftw_malloc(dof * Nx * Ny * Nz * sizeof(double));
+  }
   if (this->validState())
   {
     if (hx == 0) 
@@ -34,9 +39,50 @@ void Grid::setup()
       zdescend = (zG[0] > zG[1] ? true : false);
       this->configAxis(hzeff, Nzeff, zG, Nz, zdescend);
     }
-    else {hzeff = hz; Nzeff = Nz;}
+    else {hzeff = hz; Nzeff = Nz; unifZ = true;}
   }
   else {exitErr("Grid is invalid.");}
+}
+
+void Grid::setL(const double Lx, const double Ly, const double Lz)
+{
+  this->Lx = Lx;
+  this->Ly = Ly;
+  this->Lz = Lz;
+}
+
+void Grid::setN(const unsigned int Nx, const unsigned int Ny, const unsigned int Nz)
+{
+  this->Nx = Nx;
+  this->Ny = Ny;
+  this->Nz = Nz;
+}
+
+void Grid::seth(const double hx, const double hy, const double hz)
+{
+  this->hx = hx;
+  this->hy = hy;
+  this->hz = hz;
+}
+
+void Grid::setBCs(const BC* _BCs)
+{
+  for (unsigned int i = 0; i < 6; ++i)
+  {
+    this->BCs[i] = _BCs[i];
+  }
+  this->has_bc = true; 
+}
+
+void Grid::setZ(const double* zpts, const double* zwts)
+{
+  this->zG = (double*) fftw_malloc(Nz * sizeof(double));
+  this->zG_wts = (double*) fftw_malloc(Nz * sizeof(double));   
+  for (unsigned int i = 0; i < Nz; ++i)
+  {
+    this->zG[i] = zpts[i];
+    this->zG_wts[i] = zwts[i];
+  }
 }
 
 void Grid::makeTP(const double Lx, const double Ly, const double Lz, 
@@ -47,8 +93,10 @@ void Grid::makeTP(const double Lx, const double Ly, const double Lz,
   this->Lx = Lx; this->Ly = Ly; this->Lz = Lz;
   this->Nx = Nx; this->Ny = Ny; this->Nz = Nz;
   this->hx = hx; this->hy = hy; this->hz = hz;
-  this->periodicity = 3; this->dof = dof;
+  this->dof = dof;
   this->fG = (double*) fftw_malloc(dof * Nx * Ny * Nz * sizeof(double));
+  for (unsigned int i = 0; i < 6; ++i) {this->BCs[i] = periodic;}
+  this->has_bc = true;
   this->setup();
 }
 
@@ -59,11 +107,14 @@ void Grid::makeDP(const double Lx, const double Ly, const double Lz,
   this->Lx = Lx; this->Ly = Ly; this->Lz = Lz;
   this->Nx = Nx; this->Ny = Ny; this->Nz = Nz;
   this->hx = hx; this->hy = hy; 
-  this->periodicity = 2; this->dof = dof;
+  this->dof = dof;
   this->fG = (double*) fftw_malloc(dof * Nx * Ny * Nz * sizeof(double));
   this->zG = (double*) fftw_malloc(Nz * sizeof(double));
-  this->zG_wts = (double*) fftw_malloc(Nz * sizeof(double));   
+  this->zG_wts = (double*) fftw_malloc(Nz * sizeof(double)); 
   clencurt(zG, zG_wts, 0., Lz, Nz);
+  for (unsigned int i = 0; i < 4; ++i) {this->BCs[i] = periodic;}
+  this->BCs[4] = this->BCs[5] = no_slip_wall;
+  this->has_bc = true;
   this->setup();
 }
 
@@ -132,7 +183,7 @@ void Grid::writeCoords(std::ostream& outputStream) const
 {
   if (this->validState() && outputStream.good())
   {
-    if (periodicity == 3)
+    if (unifZ)
     {
       for (unsigned int k = 0; k < Nz; ++k)
       {
@@ -145,7 +196,7 @@ void Grid::writeCoords(std::ostream& outputStream) const
         }
       }
     }
-    else if (periodicity == 2)
+    else
     {
       for (unsigned int k = 0; k < Nz; ++k)
       {
@@ -211,11 +262,6 @@ bool Grid::validState() const
       throw Exception("Detected non-uniform grids in x,y and z, but at least\
                        one of the grids is null.", __func__, __FILE__, __LINE__);
     }
-    // periodicity = 0|1|2|3
-    if (periodicity < 0 )
-    {
-      throw Exception("Grid periodicity is unspecified.", __func__, __FILE__, __LINE__);
-    }
     // grid resolution 
     if (not (Nx && Ny && Nz))
     {
@@ -231,7 +277,24 @@ bool Grid::validState() const
     {
       throw Exception("Degrees of freedom (dof) for grid data must be specified.",
                       __func__, __FILE__, __LINE__);
-    } 
+    }
+    // BC definition
+    if (not has_bc)
+    {
+      throw Exception("BCs for ends of each axis are unspecified", __func__, __FILE__, __LINE__);
+    }  
+    else
+    {
+      for (unsigned int i = 0; i < 6; i += 2)
+      {
+        if ((BCs[i] == periodic && BCs[i + 1] != periodic) || 
+            (BCs[i + 1] == periodic && BCs[i] != periodic))
+        {
+          throw Exception("Periodic BC must applied to both ends of axis", 
+                           __func__, __FILE__, __LINE__);
+        }
+      }
+    }
   }
   catch (Exception& e)
   {

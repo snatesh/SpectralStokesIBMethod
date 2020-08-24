@@ -1,6 +1,7 @@
 #ifndef GRID_H
 #define GRID_H
 #include<ostream>
+#include<BoundaryConditions.h>
 
 /* Grid is an SoA describing the domain
 
@@ -10,12 +11,12 @@
  * Lx, Ly, Lz, hx, hy, hz - length and grid spacing in each dimension 
  *                        - if hx > 0, xG should be Null (same for y,z)
  *                        - if hx = 0, xG must be allocated (same for y,z)
- * periodicity            - triply- (3), doubly- (2), singly- (1) or a- (0) periodic mode
  * hxeff, hyeff, hzeff    - effective grid spacing (TODO: remove this)
  * Nxeff, Nyeff, Nzeff    - num points in each dimension for EXTENDED grid
  * has_locator            - bool indicated whether a grid locator has been constructed
  * (x,y,z)descend         - bools indicated sorting order of grids, if provided (set internally)
 */ 
+
 
 struct Grid
 {
@@ -29,14 +30,20 @@ struct Grid
   // to define a uniform partitioning of grid into columns
   double hxeff, hyeff, hzeff;
   unsigned int Nxeff, Nyeff, Nzeff;
-  int periodicity;
-  bool has_locator;
+  bool has_locator, has_bc, unifZ;
   bool xdescend, ydescend, zdescend;
-
+  // enum for boundary conditions at the ends of each axis
+  BC BCs[6];
+  
   /* empty/null ctor */
   Grid();
   /* set up Grid based on what caller has provided */
   void setup();
+  void setL(const double Lx, const double Ly, const double Lz);
+  void setN(const unsigned int Nx, const unsigned int Ny, const unsigned int Nz);
+  void seth(const double hx, const double hy, const double hz);
+  void setZ(const double* zpts, const double* zwts);  
+  void setBCs(const BC* BCs);
   void makeTP(const double Lx, const double Ly, const double Lz, 
               const double hx, const double hy, const double hz,
               const unsigned int Nx, const unsigned int Ny, 
@@ -64,22 +71,35 @@ struct Grid
    and wrappers defined in Grid.py */
 extern "C"
 {
-  Grid* MakeGrid(const double Lx, const double Ly, const double Lz,
-                 const double hx, const double hy, const double hz,
-                 const unsigned int Nx, const unsigned int Ny,
-                 const unsigned int Nz, const unsigned int dof,
-                 const unsigned int periodicity)
+  Grid* MakeGrid()
   {
     Grid* grid = new Grid();
-    if (periodicity == 3) {grid->makeTP(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof);}
-    else if (periodicity == 2) {grid->makeDP(Lx, Ly, Lz, hx, hy, Nx, Ny, Nz, dof);}
-    return grid; 
+    return grid;
   }
+  
+  void SetupGrid(Grid* grid) {grid->setup();}
+  //void SetL(Grid* grid, const double* Ls) {grid->setL(Ls);}
+  void SetL(Grid* grid, const double Lx, const double Ly, const double Lz) 
+  {
+    grid->Lx = Lx; grid->Ly = Ly; grid->Lz = Lz;
+  }
+  void SetN(Grid* grid, const unsigned int Nx, const unsigned int Ny, 
+            const unsigned int Nz) 
+  {
+    grid->Nx = Nx; grid->Ny = Ny; grid->Nz = Nz;
+  }
+  void Seth(Grid* grid, const double hx, const double hy, const double hz) 
+  { 
+    grid->hx = hx; grid->hy = hy; grid->hz = hz;
+  }
+  void SetZ(Grid* grid, const double* zpts, const double* zwts) {grid->setZ(zpts,zwts);}  
+  void SetBCs(Grid* grid, unsigned int* BCs) {grid->setBCs(reinterpret_cast<BC*>(BCs));}
+  void Setdof(Grid* grid, const unsigned int dof) {grid->dof = dof;}
 
   void CleanGrid(Grid* g) {g->cleanup();}
   void DeleteGrid(Grid* g) {if(g) {delete g; g = 0;}} 
-  double* getGridSpread(Grid* g) {return g->fG;}
-  void setGridSpread(Grid* g, double* f) 
+  double* GetGridSpread(Grid* g) {return g->fG;}
+  void SetGridSpread(Grid* g, double* f) 
   { 
     // copy
     for (unsigned int i = 0; i < g->Nx * g->Ny * g->Nz * g->dof; ++i)

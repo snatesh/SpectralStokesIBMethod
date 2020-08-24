@@ -8,29 +8,55 @@
 
 void spread(SpeciesList& species, Grid& grid)
 {
-  switch (grid.periodicity)
+  if (grid.unifZ)
   {
-    case 3 : spreadTP(species, grid); break;
-    case 2 : spreadDP(species, grid); break;
-    case 1 : spreadSP(species, grid); break;
-    case 0 : spreadAP(species, grid); break;
-    default : exitErr("grid periodicity invalid.");
+    spreadUnifZ(species, grid);
+    // fold spread data from ghost region of extended grid into the interior
+    fold(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
+         species.wfzP_max, species.wfzP_max, grid.Nxeff, grid.Nyeff, 
+         grid.Nzeff, grid.dof, grid.BCs);
+  }
+  else
+  {
+    spreadNonUnifZ(species, grid);
+    // fold spread data from ghost region of extended grid into the interior
+    fold(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
+         species.ext_up, species.ext_down, grid.Nxeff, grid.Nyeff, 
+         grid.Nzeff, grid.dof, grid.BCs);
   } 
+
 }
 
 void interpolate(SpeciesList& species, Grid& grid)
 {
-  switch (grid.periodicity)
+  // reinitialize force for interp
+  #pragma omp parallel
   {
-    case 3 : interpTP(species, grid); break;
-    case 2 : interpDP(species, grid); break;
-    case 1 : interpSP(species, grid); break;
-    case 0 : interpAP(species, grid); break;
-    default : exitErr("grid periodicity invalid.");
-  } 
+    #pragma omp for
+    for (unsigned int i = 0; i < species.nP * species.dof; ++i) species.fP[i] = 0;
+    #pragma omp for
+    for (unsigned int i = 0; i < grid.Nxeff * grid.Nyeff * grid.Nzeff * grid.dof; ++i) {grid.fG_unwrap[i] = 0;}
+  }
+
+  if (grid.unifZ)
+  {
+    // copy data from wrapped to unwrapped grid based on BCs
+    copy(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
+         species.wfzP_max, species.wfzP_max, grid.Nxeff, grid.Nyeff, 
+         grid.Nzeff, grid.dof, grid.BCs);
+    interpUnifZ(species, grid);
+  }
+  else
+  {
+    // copy data from wrapped to unwrapped grid based on BCs
+    copy(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
+         species.ext_up, species.ext_down, grid.Nxeff, grid.Nyeff, 
+         grid.Nzeff, grid.dof, grid.BCs);
+    interpNonUnifZ(species, grid);
+  }
 }
 
-void spreadTP(SpeciesList& species, Grid& grid)
+void spreadUnifZ(SpeciesList& species, Grid& grid)
 {
   // loop over unique alphas
   for (const double& alphaf : species.unique_alphafP)
@@ -145,25 +171,10 @@ void spreadTP(SpeciesList& species, Grid& grid)
       }
     } // finished with all groups
   } // finished with this alphaf
-
-  // fold periodic spread data from ghost region into interior
-  foldTP(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
-           species.wfzP_max, grid.Nxeff, grid.Nyeff, grid.Nzeff, grid.dof);
 }
 
-void interpTP(SpeciesList& species, Grid& grid)
+void interpUnifZ(SpeciesList& species, Grid& grid)
 {
-  // reinitialize force for interp
-  #pragma omp parallel
-  {
-    #pragma omp for
-    for (unsigned int i = 0; i < species.nP * species.dof; ++i) species.fP[i] = 0;
-    #pragma omp for
-    for (unsigned int i = 0; i < grid.Nxeff * grid.Nyeff * grid.Nzeff * grid.dof; ++i) {grid.fG_unwrap[i] = 0;}
-  }
-  // ensure periodicity of eulerian data for interpolation
-  copyTP(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
-         species.wfzP_max, grid.Nxeff, grid.Nyeff, grid.Nzeff, grid.dof);
   // loop over unique alphas
   for (const double& alphaf : species.unique_alphafP)
   {
@@ -279,7 +290,7 @@ void interpTP(SpeciesList& species, Grid& grid)
   } // finished with this alphaf
 }
 
-void spreadDP(SpeciesList& species, Grid& grid)
+void spreadNonUnifZ(SpeciesList& species, Grid& grid)
 {
   // loop over unique alphas
   for (const double& alphaf : species.unique_alphafP)
@@ -368,6 +379,7 @@ void spreadDP(SpeciesList& species, Grid& grid)
               gather(npts_match, yunwrap, species.yunwrap, indx, species.wfyP_max);
               gather(npts_match, zunwrap, species.zunwrap, indx, species.wfzP_max);
               gather(npts_match, zoffset, species.zoffset, indx, 1);
+
 
               
               const unsigned int kersz = w2 * (*std::max_element(wz, wz + npts_match));
@@ -396,26 +408,10 @@ void spreadDP(SpeciesList& species, Grid& grid)
       }
     } // finished with all groups
   } // finished with this alphaf
-
-  // fold periodic spread data from ghost region into interior
-  foldDP(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
-         species.ext_up, species.ext_down, grid.Nxeff, grid.Nyeff, grid.Nzeff, grid.dof);
 }
 
-// TODO: THIS IS BORKED
-void interpDP(SpeciesList& species, Grid& grid)
+void interpNonUnifZ(SpeciesList& species, Grid& grid)
 {
-  // reinitialize force for interp
-  #pragma omp parallel
-  {
-    #pragma omp for
-    for (unsigned int i = 0; i < species.nP * species.dof; ++i) species.fP[i] = 0;
-    #pragma omp for
-    for (unsigned int i = 0; i < grid.Nxeff * grid.Nyeff * grid.Nzeff * grid.dof; ++i) {grid.fG_unwrap[i] = 0;}
-  }
-  // fold periodic spread data from ghost region into interior
-  copyDP(grid.fG_unwrap, grid.fG, species.wfxP_max, species.wfyP_max, 
-         species.ext_up, species.ext_down, grid.Nxeff, grid.Nyeff, grid.Nzeff, grid.dof);
   // loop over unique alphas
   for (const double& alphaf : species.unique_alphafP)
   {
@@ -425,7 +421,6 @@ void interpDP(SpeciesList& species, Grid& grid)
     const unsigned short w2 = wx * wy;
     const unsigned int subsz = w2 * grid.Nzeff;
     const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
-    double weight;
     // loop over w^2 groups of columns
     for (unsigned int izero = 0; izero < wx; ++izero)
     {
@@ -483,7 +478,7 @@ void interpDP(SpeciesList& species, Grid& grid)
               }
 
               // gather particle pts, betas, forces etc. for this column
-              double *fPc, *betafPc, *normfPc, *xunwrap, *yunwrap, *zunwrap;
+              double *fPc, *betafPc, *normfPc, *xunwrap, *yunwrap, *zunwrap, *pt_wts;
               unsigned int* zoffset; unsigned short *wfPc, *wz;
               fPc = (double*) fftw_malloc(npts_match * species.dof * sizeof(double));
               betafPc = (double*) fftw_malloc(npts_match * sizeof(double));
@@ -493,6 +488,7 @@ void interpDP(SpeciesList& species, Grid& grid)
               xunwrap = (double*) fftw_malloc(species.wfxP_max * npts_match * sizeof(double)); 
               yunwrap = (double*) fftw_malloc(species.wfyP_max * npts_match * sizeof(double)); 
               zunwrap = (double*) fftw_malloc(species.wfzP_max * npts_match * sizeof(double));
+              pt_wts = (double*) fftw_malloc(species.wfzP_max * npts_match * sizeof(double));
               zoffset = (unsigned int*) fftw_malloc(npts_match * sizeof(unsigned int));
 
               gather(npts_match, betafPc, species.betafP, indx, 1);
@@ -503,9 +499,9 @@ void interpDP(SpeciesList& species, Grid& grid)
               gather(npts_match, xunwrap, species.xunwrap, indx, species.wfxP_max);
               gather(npts_match, yunwrap, species.yunwrap, indx, species.wfyP_max);
               gather(npts_match, zunwrap, species.zunwrap, indx, species.wfzP_max);
+              gather(npts_match, pt_wts, species.pt_wts, indx, species.wfzP_max);
               gather(npts_match, zoffset, species.zoffset, indx, 1);
 
-              
               const unsigned int kersz = w2 * (*std::max_element(wz, wz + npts_match));
 
               // get the kernel w x w x w kernel weights for each particle in col 
@@ -516,7 +512,7 @@ void interpDP(SpeciesList& species, Grid& grid)
                              species.wfyP_max, species.wfzP_max);
 
               // spread the particle forces with the kernel weights
-              interp_col(fGc, delta, fPc, zoffset, npts_match, kersz, grid.dof, weight);
+              interp_col(fGc, delta, fPc, zoffset, npts_match, wx, wy, wz, species.wfzP_max, grid.dof, pt_wts);
 
               // scatter back to global lagrangian grid
               scatter(npts_match, fPc, species.fP, indx, species.dof);

@@ -15,6 +15,8 @@ endif()
 # make sure we can link to openmp
 find_package(OpenMP REQUIRED)
 
+# TODO add find LAPACKE
+
 # add support for FFTW to find_package
 configure_file(cmake.in/download_FindFFTW.cmake.in findFFTW-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -66,7 +68,9 @@ set(gridSRC src/Grid.cpp)
 set(speciesSRC src/SpeciesList.cpp)
 set(spreadInterpSRC src/SpreadInterp.cpp)
 set(transformSRC src/Transform.cpp)
-set(spreadInterpTestSRC testing/test_spread_TP.cpp)
+set(spreadInterpTPTestSRC testing/test_spread_TP.cpp)
+set(linSolveSRC src/LinearSolvers.cpp)
+set(spreadInterpDPTestSRC testing/test_spread_DP.cpp)
 set(chebTestSRC testing/test_cheb.cpp)
 set(transformTestSRC testing/test_transform_TP.cpp)
 
@@ -95,19 +99,27 @@ add_library(transform SHARED ${transformSRC})
 set_source_files_properties(${transformSRC} PROPERTIES COMPILE_FLAGS "-lfftw3 -lm -fPIC -fopenmp")
 target_link_libraries(transform fftw3 fftw3_omp gomp)
 
+add_library(linSolve SHARED ${linSolveSRC})
+set_source_files_properties(${linSolveSRC} PROPERTIES COMPILE_FLAGS "-lm -llapacke -lblas -fopenmp -fPIC")
+
 # install libs
 install(TARGETS spreadInterp ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS cheb ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS grid ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS species ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS transform ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS linSolve ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 ## build executables ##
 
   
 # building test
-add_executable(test_spread_TP ${spreadInterpTestSRC})
-set_source_files_properties(${spreadInterpTestSRC} PROPERTIES COMPILE_FLAGS "-fopenmp")
+add_executable(test_spread_TP ${spreadInterpTPTestSRC})
+set_source_files_properties(${spreadInterpTPTestSRC} PROPERTIES COMPILE_FLAGS "-fopenmp")
 target_link_libraries(test_spread_TP spreadInterp fftw3_omp)
+
+add_executable(test_spread_DP ${spreadInterpDPTestSRC})
+set_source_files_properties(${spreadInterpDPTestSRC} PROPERTIES COMPILE_FLAGS "-fopenmp")
+target_link_libraries(test_spread_DP spreadInterp fftw3_omp)
 
 
 add_executable(test_cheb ${chebTestSRC})
@@ -119,6 +131,7 @@ target_link_libraries(test_transform_TP transform spreadInterp)
 
 # install exec for test data creation
 install(TARGETS test_spread_TP RUNTIME DESTINATION bin/testing)
+install(TARGETS test_spread_DP RUNTIME DESTINATION bin/testing)
 install(TARGETS test_cheb RUNTIME DESTINATION bin/testing)
 install(TARGETS test_transform_TP RUNTIME DESTINATION bin/testing)
 

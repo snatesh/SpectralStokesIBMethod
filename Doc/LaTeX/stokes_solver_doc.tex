@@ -59,7 +59,7 @@ where $w$ and $c_{f|\tau}(w)$ are the width and dimensionless radius (of monopol
 \myssection{How to handle various BCs}{}
 \mysection{Describe the Python interface}{}
 \myssection{A note on memory layout}{}
-Data on the grid are stored so that the fastest index is $l = 0,\cdots,\texttt{dof}$, followed by $i = 0,\cdots,N_x$, then $j = 0, \cdots, N_y$, and with $k = 0,\cdots ,N_z$ the slowest. This means that the \texttt{Grid} member \texttt{fG} is such that \texttt{fG}(k,j,i,l) = \texttt{fG[l + dof * (i + Nx * (j + Ny * k))]}.
+Data on the grid are stored so that the fastest index is $l = 0,\cdots,\texttt{dof}-1$, followed by $i = 0,\cdots,N_x-1$, then $j = 0, \cdots, N_y-1$, and with $k = 0,\cdots ,N_z-1$ the slowest. This means that the \texttt{Grid} member \texttt{fG} is such that \texttt{fG}(k,j,i,l) = \texttt{fG[l + dof * (i + Nx * (j + Ny * k))]}.
 The reason for this has to do with parallelization and vectorization in the underlying spreading algorithm, where it's better if $x$ and $y$ vary faster than $z$. However, this isn't necessarily true for the solve stage. 
 
 In the Python interface, when we execute 

@@ -27,7 +27,7 @@ SpeciesList::SpeciesList() : xP(0), fP(0), betafP(0), alphafP(0),
                              radP(0), normfP(0), wfP(0), wfxP(0), wfyP(0),
                              wfzP(0), nP(0), normalized(false), dof(0), 
                              unique_monopoles(ESParticleSet(20,esparticle_hash)),
-                             xunwrap(0), yunwrap(0), zunwrap(0), zoffset(0)
+                             xunwrap(0), yunwrap(0), zunwrap(0), zoffset(0), pt_wts(0)
 {}
 
 /* construct with external data by copy */
@@ -36,7 +36,7 @@ SpeciesList::SpeciesList(const double* _xP, const double* _fP, const double* _ra
                          const unsigned int _nP, const unsigned int _dof) :
   nP(_nP), dof(_dof), alphafP(0), normfP(0), wfxP(0), wfyP(0), wfzP(0), normalized(false),
   unique_monopoles(ESParticleSet(20,esparticle_hash)), xunwrap(0), yunwrap(0), zunwrap(0),
-  zoffset(0)
+  zoffset(0), pt_wts(0)
 {
   xP = (double*) fftw_malloc(nP * 3 * sizeof(double));
   fP = (double*) fftw_malloc(nP * dof * sizeof(double));
@@ -110,7 +110,7 @@ void SpeciesList::randInit(Grid& grid, const unsigned int _nP)
     //double Rhs[3] = {1.2047, 1.2047, 1.2047};
     std::default_random_engine gen;
     std::uniform_int_distribution<int> unifInd(0,2);
-    if (grid.periodicity == 3)
+    if (grid.unifZ)
     {
       unsigned int randInd;
       for (unsigned int i = 0; i < nP; ++i) 
@@ -131,7 +131,7 @@ void SpeciesList::randInit(Grid& grid, const unsigned int _nP)
         betafP[i] = betas[randInd];
       }
     }
-    else if (grid.periodicity == 2)
+    else
     {
       unsigned int randInd;
       for (unsigned int i = 0; i < nP; ++i) 
@@ -240,17 +240,13 @@ void SpeciesList::locateOnGrid(Grid& grid)
 {
   if (not grid.has_locator)
   {
-    switch (grid.periodicity)
-    {
-      case 3 : this->locateOnGridTP(grid); break;
-      case 2 : this->locateOnGridDP(grid); break;  
-      default : exitErr("grid periodicity invalid.");
-    }
+    if (grid.unifZ) {this->locateOnGridUnifZ(grid);}
+    else {this->locateOnGridNonUnifZ(grid);}
     grid.has_locator = true; 
   }
 }
 
-void SpeciesList::locateOnGridTP(Grid& grid)
+void SpeciesList::locateOnGridUnifZ(Grid& grid)
 {
   // get widths on effective uniform grid
   #pragma omp parallel for
@@ -300,6 +296,10 @@ void SpeciesList::locateOnGridTP(Grid& grid)
       {
         // TODO : something wrong with weird grid spacing like 0.3 or 0.7
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hxeff - xP[3 * i];
+        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          xunwrap[j + i * wfxP_max] = alphafP[i];
+        }
         // initialize buffer region if needed
         if (j == wx - 1 && wx < wfxP_max)
         {
@@ -309,6 +309,10 @@ void SpeciesList::locateOnGridTP(Grid& grid)
       for (unsigned int j = 0; j < wy; ++j)
       {
         yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hyeff - xP[1 + 3 * i];
+        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          yunwrap[j + i * wfyP_max] = alphafP[i];
+        }
         // initialize buffer region if needed
         if (j == wy - 1 && wy < wfyP_max)
         {
@@ -318,6 +322,10 @@ void SpeciesList::locateOnGridTP(Grid& grid)
       for (unsigned int j = 0; j < wz; ++j)
       {
         zunwrap[j + i * wfzP_max] = ((double) zclose[i] + j - wz / 2 + evenz) * grid.hzeff - xP[2 + 3 * i];
+        if (fabs(pow(zunwrap[j + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          zunwrap[j + i * wfzP_max] = alphafP[i];
+        }
         // initialize buffer region if needed
         if (j == wz - 1 && wz < wfzP_max)
         {
@@ -354,7 +362,7 @@ void SpeciesList::locateOnGridTP(Grid& grid)
   if (zclose) {fftw_free(yclose); yclose = 0;}
 }
 
-void SpeciesList::locateOnGridDP(Grid& grid)
+void SpeciesList::locateOnGridNonUnifZ(Grid& grid)
 {
   // get widths on effective uniform grid
   #pragma omp parallel for
@@ -369,7 +377,7 @@ void SpeciesList::locateOnGridDP(Grid& grid)
 
   // define extended z grid
   ext_down = 0; ext_up = 0;
-  double* zG_ext;
+  double *zG_ext, *zG_ext_wts;
   unsigned short* indl = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
   unsigned short* indr = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
   if (grid.zdescend)
@@ -380,19 +388,25 @@ void SpeciesList::locateOnGridDP(Grid& grid)
     while (grid.zG[i] - grid.zG[grid.Nz - 1] <= alphafP_max) {ext_down += 1; i -= 1;}
     grid.Nzeff = grid.Nz + ext_up + ext_down;
     zG_ext = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
+    zG_ext_wts = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
     for (unsigned int i = ext_up; i < grid.Nzeff - ext_down; ++i)
     {
       zG_ext[i] = grid.zG[i - ext_up];
+      zG_ext_wts[i] = grid.zG_wts[i - ext_up];
     } 
     unsigned int j = 0;
     for (unsigned int i = ext_up; i > 0; --i) 
     {
-      zG_ext[j] = 2.0 * grid.zG[0] - grid.zG[i]; j += 1;
+      zG_ext[j] = 2.0 * grid.zG[0] - grid.zG[i]; 
+      zG_ext_wts[j] = grid.zG_wts[i];
+      j += 1;
     }
     j = grid.Nzeff - ext_down;;
     for (unsigned int i = grid.Nz - 2; i > grid.Nz - 2 - ext_down; --i)
     { 
-      zG_ext[j] = -1.0 * grid.zG[i]; j += 1; 
+      zG_ext[j] = -1.0 * grid.zG[i]; 
+      zG_ext_wts[j] = grid.zG_wts[i]; 
+      j += 1; 
     } 
     // find wz for each particle
     for (unsigned int i = 0; i < nP; ++i)
@@ -419,19 +433,25 @@ void SpeciesList::locateOnGridDP(Grid& grid)
     while (grid.zG[grid.Nz - 1] - grid.zG[i] <= alphafP_max) {ext_up += 1; i -= 1;}
     grid.Nzeff = grid.Nz + ext_up + ext_down;
     zG_ext = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
+    zG_ext_wts = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
     for (unsigned int i = ext_down; i < grid.Nzeff - ext_up; ++i)
     {
       zG_ext[i] = grid.zG[i - ext_down];
+      zG_ext_wts[i] = grid.zG_wts[i - ext_down];
     }
     unsigned int j = 0;
     for (unsigned int i = ext_down; i > 0; --i) 
     {
-      zG_ext[j] = -1.0 * grid.zG[i]; j += 1;
+      zG_ext[j] = -1.0 * grid.zG[i]; 
+      zG_ext_wts[j] = grid.zG_wts[i];
+      j += 1;
     }
     j = grid.Nzeff - ext_up;
     for (unsigned int i = grid.Nz - 2; i > grid.Nz - 2 - ext_up; --i)
     { 
-      zG_ext[j] = 2.0 * grid.zG[grid.Nz-1] - grid.zG[i]; j += 1; 
+      zG_ext[j] = 2.0 * grid.zG[grid.Nz-1] - grid.zG[i]; 
+      zG_ext_wts[j] = grid.zG_wts[i];
+      j += 1; 
     }
     // find wz for each particle
     for (unsigned int i = 0; i < nP; ++i)
@@ -457,10 +477,10 @@ void SpeciesList::locateOnGridDP(Grid& grid)
   xunwrap = (double*) fftw_malloc(wfxP_max * nP * sizeof(double));
   yunwrap = (double*) fftw_malloc(wfyP_max * nP * sizeof(double));
   zunwrap = (double*) fftw_malloc(wfzP_max * nP * sizeof(double));
-  
+  pt_wts = (double*) fftw_malloc(wfzP_max * nP * sizeof(double));  
   unsigned int* xclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
   unsigned int* yclose = (unsigned int*) fftw_malloc(nP * sizeof(unsigned int));
-  unsigned int* zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
+  zoffset = (unsigned int *) fftw_malloc(nP * sizeof(unsigned int));
 
   #pragma omp parallel
   { 
@@ -478,6 +498,10 @@ void SpeciesList::locateOnGridDP(Grid& grid)
       for (unsigned int j = 0; j < wx; ++j)
       {
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hxeff - xP[3 * i];
+        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          xunwrap[j + i * wfxP_max] = alphafP[i];
+        }
         // initialize buffer region if needed
         if (j == wx - 1 && wx < wfxP_max)
         {
@@ -487,6 +511,10 @@ void SpeciesList::locateOnGridDP(Grid& grid)
       for (unsigned int j = 0; j < wy; ++j)
       {
         yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hyeff - xP[1 + 3 * i];
+        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          yunwrap[j + i * wfyP_max] = alphafP[i];
+        }
         // initialize buffer region if needed
         if (j == wy - 1 && wy < wfyP_max)
         {
@@ -496,13 +524,23 @@ void SpeciesList::locateOnGridDP(Grid& grid)
       unsigned int k = 0;
       for (unsigned int j = indl[i]; j <= indr[i]; ++j)
       {
-        zunwrap[k + i * wfzP_max] = zG_ext[j] - xP[2 + 3 * i]; k += 1;
+        zunwrap[k + i * wfzP_max] = zG_ext[j] - xP[2 + 3 * i]; 
+        if (fabs(pow(zunwrap[k + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        {
+          zunwrap[k + i * wfzP_max] = alphafP[i];
+        }
+        pt_wts[k + i * wfzP_max] = grid.hxeff * grid.hyeff * zG_ext_wts[j];
+        k += 1;
         // initialize buffer region if needed
         if (k == wz - 1 && wz < wfzP_max)
         {
-          for (unsigned int l = wz; l < wfzP_max; ++l) {zunwrap[l + i * wfzP_max] = 0;}
-        }   
-      } 
+          for (unsigned int l = wz; l < wfzP_max; ++l) 
+          {
+            zunwrap[l + i * wfzP_max] = 0;
+            pt_wts[l + i * wfzP_max] = 0;
+          }
+        }
+      }
       zoffset[i] = wx * wy * indl[i];   
       grid.nextn[i] = -1;
     }
@@ -530,6 +568,7 @@ void SpeciesList::locateOnGridDP(Grid& grid)
   }
 
   if (zG_ext) {fftw_free(zG_ext); zG_ext = 0;}
+  if (zG_ext_wts) {fftw_free(zG_ext_wts); zG_ext_wts = 0;}
   if (xclose) {fftw_free(xclose); xclose = 0;}
   if (yclose) {fftw_free(yclose); yclose = 0;}
   if (indl) {fftw_free(indl); indl = 0;}
@@ -611,6 +650,7 @@ void SpeciesList::cleanup()
     if (yunwrap) {fftw_free(yunwrap); yunwrap = 0;}
     if (zunwrap) {fftw_free(zunwrap); zunwrap = 0;}
     if (zoffset) {fftw_free(zoffset); zoffset = 0;}
+    if (pt_wts) {fftw_free(pt_wts); pt_wts = 0;}
   }
 }
 
