@@ -6,9 +6,9 @@
 #include<omp.h>
 #include<math.h>
 #include<fftw3.h>
-#include "SpeciesList.h"
+#include "ParticleList.h"
 #include "Grid.h"
-#include "chebyshev.h"
+#include "quadrature.h"
 #include "exceptions.h"
 
 
@@ -23,7 +23,7 @@ inline double const esKernel(const double x, const double beta, const double alp
 }
 
 // null initialization
-SpeciesList::SpeciesList() : xP(0), fP(0), betafP(0), alphafP(0), 
+ParticleList::ParticleList() : xP(0), fP(0), betafP(0), alphafP(0), 
                              radP(0), normfP(0), wfP(0), wfxP(0), wfyP(0),
                              wfzP(0), nP(0), normalized(false), dof(0), 
                              unique_monopoles(ESParticleSet(20,esparticle_hash)),
@@ -31,7 +31,7 @@ SpeciesList::SpeciesList() : xP(0), fP(0), betafP(0), alphafP(0),
 {}
 
 /* construct with external data by copy */
-SpeciesList::SpeciesList(const double* _xP, const double* _fP, const double* _radP, 
+ParticleList::ParticleList(const double* _xP, const double* _fP, const double* _radP, 
                          const double* _betafP, const double* _cwfP, const unsigned short* _wfP, 
                          const unsigned int _nP, const unsigned int _dof) :
   nP(_nP), dof(_dof), alphafP(0), normfP(0), wfxP(0), wfyP(0), wfzP(0), normalized(false),
@@ -66,7 +66,7 @@ SpeciesList::SpeciesList(const double* _xP, const double* _fP, const double* _ra
   this->setup();
 }
 
-void SpeciesList::setup()
+void ParticleList::setup()
 {
   if (this->validState())
   {
@@ -75,109 +75,28 @@ void SpeciesList::setup()
   }
   else
   {
-    exitErr("SpeciesList is invalid.");
+    exitErr("ParticleList is invalid.");
   }
 }
 
-void SpeciesList::randInit(Grid& grid, const unsigned int _nP)
-{
-  if (grid.validState())
-  {
-    nP = _nP;
-    dof = grid.dof;
-    xP = (double*) fftw_malloc(nP * 3 * sizeof(double));
-    fP = (double*) fftw_malloc(nP * dof * sizeof(double));
-    betafP = (double*) fftw_malloc(nP * sizeof(double));
-    radP = (double*) fftw_malloc(nP * sizeof(double));
-    cwfP = (double*) fftw_malloc(nP * sizeof(double));
-    alphafP = (double*) fftw_malloc(nP * sizeof(double));
-    normfP = (double*) fftw_malloc(nP * sizeof(double));
-    wfP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-    wfxP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-    wfyP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-    wfzP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-    unsigned short ws[3] = {4, 5, 6};
-    //unsigned short ws[3] = {6, 6, 6};
-    //unsigned short ws[3] = {5, 5, 5};
-    //unsigned short ws[3] = {4, 4, 4};
-    double betas[3] = {1.785, 1.886, 1.714};
-    //double betas[3] = {1.714, 1.714, 1.714};
-    //double betas[3] = {1.886, 1.886, 1.886};
-    //double betas[3] = {1.785, 1.785, 1.785};
-    double Rhs[3] = {1.2047, 1.3437, 1.5539};
-    //double Rhs[3] = {1.5539, 1.5539, 1.5539};
-    //double Rhs[3] = {1.3437, 1.3437, 1.3437};
-    //double Rhs[3] = {1.2047, 1.2047, 1.2047};
-    std::default_random_engine gen;
-    std::uniform_int_distribution<int> unifInd(0,2);
-    if (grid.unifZ)
-    {
-      unsigned int randInd;
-      for (unsigned int i = 0; i < nP; ++i) 
-      {
-        xP[3 * i] = drand48() * (grid.Lx - grid.hx); 
-        xP[1 + 3 * i] = drand48() * (grid.Ly - grid.hy); 
-        xP[2 + 3 * i] = drand48() * (grid.Lz - grid.hz); 
-        for (unsigned int j = 0; j < dof; ++j)
-        {
-          fP[j + dof * i] = 10;//2 * drand48() - 1;
-        }
-        randInd = unifInd(gen);
-        // usually, we multiply this by h 
-        radP[i] = Rhs[randInd];
-        // and this is Rh/h
-        cwfP[i] = Rhs[randInd];
-        wfP[i] = ws[randInd];
-        betafP[i] = betas[randInd];
-      }
-    }
-    else
-    {
-      unsigned int randInd;
-      for (unsigned int i = 0; i < nP; ++i) 
-      {
-        xP[3 * i] = drand48() * (grid.Lx - grid.hx); 
-        xP[1 + 3 * i] = drand48() * (grid.Ly - grid.hy); 
-        xP[2 + 3 * i] = drand48() * grid.Lz; 
-        for (unsigned int j = 0; j < dof; ++j)
-        {
-          fP[j + dof * i] = 10;//2 * drand48() - 1;
-        }
-        randInd = unifInd(gen);
-        // usually, we multiply this by h 
-        radP[i] = Rhs[randInd];
-        cwfP[i] = Rhs[randInd];
-        wfP[i] = ws[randInd];
-        betafP[i] = betas[randInd];
-      }
-    }
-    this->setup(grid);
-  }
-  else
-  {
-    exitErr("Species could not be setup on grid because grid is invalid.");
-  }
-}
-
-
-void SpeciesList::setup(Grid& grid)
+void ParticleList::setup(Grid& grid)
 {
   if (grid.validState())
   {
     if (dof != grid.dof)
     {
-      exitErr("DOF of SpeciesList must match DOF of grid.");
+      exitErr("DOF of ParticleList must match DOF of grid.");
     }
     this->setup();
     this->locateOnGrid(grid);
   }
   else
   {
-    exitErr("Species could not be setup on grid because grid is invalid.");
+    exitErr("Particles could not be setup on grid because grid is invalid.");
   }
 }
 
-void SpeciesList::findUniqueKernels()
+void ParticleList::findUniqueKernels()
 {
   if (this->unique_monopoles.size() == 0)
   {
@@ -189,7 +108,7 @@ void SpeciesList::findUniqueKernels()
 }
 
 /* normalize ES kernels using clenshaw-curtis quadrature*/
-void SpeciesList::normalizeKernels()
+void ParticleList::normalizeKernels()
 {
   // proceed if we haven't already normalized
   if (not this->normalized)
@@ -236,7 +155,7 @@ void SpeciesList::normalizeKernels()
   }
 }
 
-void SpeciesList::locateOnGrid(Grid& grid)
+void ParticleList::locateOnGrid(Grid& grid)
 {
   if (not grid.has_locator)
   {
@@ -246,7 +165,7 @@ void SpeciesList::locateOnGrid(Grid& grid)
   }
 }
 
-void SpeciesList::locateOnGridUnifZ(Grid& grid)
+void ParticleList::locateOnGridUnifZ(Grid& grid)
 {
   // get widths on effective uniform grid
   #pragma omp parallel for
@@ -362,7 +281,7 @@ void SpeciesList::locateOnGridUnifZ(Grid& grid)
   if (zclose) {fftw_free(yclose); yclose = 0;}
 }
 
-void SpeciesList::locateOnGridNonUnifZ(Grid& grid)
+void ParticleList::locateOnGridNonUnifZ(Grid& grid)
 {
   // get widths on effective uniform grid
   #pragma omp parallel for
@@ -575,8 +494,8 @@ void SpeciesList::locateOnGridNonUnifZ(Grid& grid)
   if (indr) {fftw_free(indr); indr = 0;}
 }
 
-/* write current state of SpeciesList to ostream */
-void SpeciesList::writeSpecies(std::ostream& outputStream) const
+/* write current state of ParticleList to ostream */
+void ParticleList::writeParticles(std::ostream& outputStream) const
 {
   if (this->validState() && outputStream.good()) 
   { 
@@ -597,18 +516,18 @@ void SpeciesList::writeSpecies(std::ostream& outputStream) const
   }
   else
   {
-    exitErr("Unable to write species to output stream.");
+    exitErr("Unable to write particles to output stream.");
   }
 }
 
-/* write current state of SpeciesList to file */
-void SpeciesList::writeSpecies(const char* fname) const
+/* write current state of ParticleList to file */
+void ParticleList::writeParticles(const char* fname) const
 {
   std::ofstream file; file.open(fname);
-  writeSpecies(file); file.close();
+  writeParticles(file); file.close();
 }
 
-bool SpeciesList::validState() const
+bool ParticleList::validState() const
 {
   try
   {
@@ -619,7 +538,7 @@ bool SpeciesList::validState() const
     } 
     if (not dof)
     {
-      throw Exception("Degrees of freedom for data on species must be specified.",
+      throw Exception("Degrees of freedom for data on particles must be specified.",
                       __func__, __FILE__, __LINE__);
     }
   } 
@@ -631,7 +550,7 @@ bool SpeciesList::validState() const
   return true;
 }
 
-void SpeciesList::cleanup()
+void ParticleList::cleanup()
 {
   if (this->validState())
   {
@@ -654,3 +573,82 @@ void SpeciesList::cleanup()
   }
 }
 
+void ParticleList::randInit(Grid& grid, const unsigned int _nP)
+{
+  if (grid.validState())
+  {
+    nP = _nP;
+    dof = grid.dof;
+    xP = (double*) fftw_malloc(nP * 3 * sizeof(double));
+    fP = (double*) fftw_malloc(nP * dof * sizeof(double));
+    betafP = (double*) fftw_malloc(nP * sizeof(double));
+    radP = (double*) fftw_malloc(nP * sizeof(double));
+    cwfP = (double*) fftw_malloc(nP * sizeof(double));
+    alphafP = (double*) fftw_malloc(nP * sizeof(double));
+    normfP = (double*) fftw_malloc(nP * sizeof(double));
+    wfP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+    wfxP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+    wfyP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+    wfzP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+    unsigned short ws[3] = {4, 5, 6};
+    //unsigned short ws[3] = {6, 6, 6};
+    //unsigned short ws[3] = {5, 5, 5};
+    //unsigned short ws[3] = {4, 4, 4};
+    double betas[3] = {1.785, 1.886, 1.714};
+    //double betas[3] = {1.714, 1.714, 1.714};
+    //double betas[3] = {1.886, 1.886, 1.886};
+    //double betas[3] = {1.785, 1.785, 1.785};
+    double Rhs[3] = {1.2047, 1.3437, 1.5539};
+    //double Rhs[3] = {1.5539, 1.5539, 1.5539};
+    //double Rhs[3] = {1.3437, 1.3437, 1.3437};
+    //double Rhs[3] = {1.2047, 1.2047, 1.2047};
+    std::default_random_engine gen;
+    std::uniform_int_distribution<int> unifInd(0,2);
+    if (grid.unifZ)
+    {
+      unsigned int randInd;
+      for (unsigned int i = 0; i < nP; ++i) 
+      {
+        xP[3 * i] = drand48() * (grid.Lx - grid.hx); 
+        xP[1 + 3 * i] = drand48() * (grid.Ly - grid.hy); 
+        xP[2 + 3 * i] = drand48() * (grid.Lz - grid.hz); 
+        for (unsigned int j = 0; j < dof; ++j)
+        {
+          fP[j + dof * i] = 10;//2 * drand48() - 1;
+        }
+        randInd = unifInd(gen);
+        // usually, we multiply this by h 
+        radP[i] = Rhs[randInd];
+        // and this is Rh/h
+        cwfP[i] = Rhs[randInd];
+        wfP[i] = ws[randInd];
+        betafP[i] = betas[randInd];
+      }
+    }
+    else
+    {
+      unsigned int randInd;
+      for (unsigned int i = 0; i < nP; ++i) 
+      {
+        xP[3 * i] = drand48() * (grid.Lx - grid.hx); 
+        xP[1 + 3 * i] = drand48() * (grid.Ly - grid.hy); 
+        xP[2 + 3 * i] = drand48() * grid.Lz; 
+        for (unsigned int j = 0; j < dof; ++j)
+        {
+          fP[j + dof * i] = 10;//2 * drand48() - 1;
+        }
+        randInd = unifInd(gen);
+        // usually, we multiply this by h 
+        radP[i] = Rhs[randInd];
+        cwfP[i] = Rhs[randInd];
+        wfP[i] = ws[randInd];
+        betafP[i] = betas[randInd];
+      }
+    }
+    this->setup(grid);
+  }
+  else
+  {
+    exitErr("Particles could not be setup on grid because grid is invalid.");
+  }
+}

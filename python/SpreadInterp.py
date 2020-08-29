@@ -20,10 +20,10 @@ libSpreadInterp.Interpolate.restype = ctypes.POINTER(ctypes.c_double)
 
 def Spread(s, g, N):
   """
-  Spread data from the species s onto the grid g.
+  Spread data from the particles s onto the grid g.
   
   Parameters:
-    s - a pointer to the C++ SpeciesList struct
+    s - a pointer to the C++ ParticleList struct
     g - a pointer to the C++ Grid struct
     N - total number of elements (Nx * Ny * Nz * dof)
   
@@ -37,10 +37,10 @@ def Spread(s, g, N):
 
 def Interpolate(s, g, N):
   """
-  Interpolate data from the grid g onto the species s.
+  Interpolate data from the grid g onto the particles s.
   
   Parameters:
-    s - a pointer to the C++ SpeciesList struct
+    s - a pointer to the C++ ParticleList struct
     g - a pointer to the C++ Grid struct
     N - total number of elements (nP * dof)
   
@@ -48,6 +48,6 @@ def Interpolate(s, g, N):
     fP - a flat numpy array containing the interpolated data on the particles (nP*dof,1)
   
   Side Effects:
-    The C++ SpeciesList data member s.fP is populated with the interpolated data
+    The C++ ParticleList data member s.fP is populated with the interpolated data
   """
   return np.ctypeslib.as_array(libSpreadInterp.Interpolate(s,g), shape=(N, ))

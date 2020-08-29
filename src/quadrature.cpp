@@ -1,4 +1,4 @@
-#include<chebyshev.h>
+#include<quadrature.h>
 #include<math.h>
 #include<omp.h>
 

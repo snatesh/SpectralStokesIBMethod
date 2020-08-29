@@ -99,7 +99,7 @@ def firstIntegralMatrix(N, H):
     H - (b-a)/2 for a Chebyshev grid [a,b]
 
   Returns:
-    FIMat - the first Chebyshev integral (sparse) matrix, scaled by H
+    FIMat - the first Chebyshev integral matrix, scaled by H
   """
   jj = np.arange(2,N)
   colm1 = np.concatenate(([1], 1 / (2 * jj)))
@@ -119,7 +119,7 @@ def secondIntegralMatrix(N, H):
     H - (b-a)/2 for a Chebyshev grid [a,b]
 
   Returns:
-    SIMat - the second Chebyshev integral (sparse) matrix, scaled by H^2
+    SIMat - the second Chebyshev integral matrix, scaled by H^2
   """
 
   jj = np.arange(3, N)

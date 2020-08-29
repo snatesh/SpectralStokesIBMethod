@@ -4,7 +4,7 @@ import random
 # import Python modules wrapping C libraries (and also numpy)
 sys.path.append('../python')
 from Grid import *
-from Species import *
+from Particles import *
 from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
@@ -83,18 +83,18 @@ for j in range(0,nits):
   # instantiate and define the grid with C lib call
   # this sets the GridGen.grid member to a pointer to a C++ Grid struct
   gridGen.Make()
-  # instantiate the python species wrapper
-  speciesGen = SpeciesGen(nP, dof, xP, fP, radP, wfP, cwfP, betafP)
-  # instantiate and define the species with C lib call
-  # this sets the SpeciesGen.species member to a pointer to a C++ SpeciesList struct
-  speciesGen.Make()
-  # setup the species on the grid with C lib call
-  # this builds the species-grid locator and defines other
+  # instantiate the python particles wrapper
+  particlesGen = ParticlesGen(nP, dof, xP, fP, radP, wfP, cwfP, betafP)
+  # instantiate and define the particles with C lib call
+  # this sets the ParticlesGen.particles member to a pointer to a C++ ParticlesList struct
+  particlesGen.Make()
+  # setup the particles on the grid with C lib call
+  # this builds the particles-grid locator and defines other
   # interal data used to spread and interpolate
-  speciesGen.Setup(gridGen.grid)
+  particlesGen.Setup(gridGen.grid)
   
   # spread forces on the particles (C lib)
-  fG = Spread(speciesGen.species, gridGen.grid, gridGen.Ntotal)
+  fG = Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
   if write:
     # write the grid with spread to file (C lib)
     gridGen.WriteGrid('spread.txt')
@@ -118,16 +118,16 @@ for j in range(0,nits):
   # set velocity as new grid spread (C lib)
   gridGen.SetGridSpread(uG_r)
   # interpolate velocities on the particles (C lib)
-  vP = Interpolate(speciesGen.species, gridGen.grid, nP * dof)
+  vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
   if write:
-    # write species with interpolated vel to file (C lib)
-    speciesGen.WriteSpecies('particles.txt')
+    # write particles with interpolated vel to file (C lib)
+    particlesGen.WriteParticles('particles.txt')
     # write grid velocities
     gridGen.WriteGrid('velocities.txt')
   # free memory persisting b/w C and python (C lib)
   fTransformer.Clean()
   bTransformer.Clean()
   gridGen.Clean()
-  speciesGen.Clean()
+  particlesGen.Clean()
   time += timeit.default_timer() - t0
 print(time / nits)

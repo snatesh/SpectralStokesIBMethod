@@ -5,6 +5,8 @@
 #include<iostream>
 #include<string.h>
 
+/* Exception handler class for C library */
+
 class Exception : public std::runtime_error
 {
   public:

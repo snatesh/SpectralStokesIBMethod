@@ -1,14 +1,14 @@
 import ctypes
-libSpecies = ctypes.CDLL('../lib/libspecies.so')
+libParticles = ctypes.CDLL('../lib/libparticles.so')
 
-class SpeciesGen(object):
+class ParticlesGen(object):
   """
-  Python wrappers for C library SpeciesList routines.
+  Python wrappers for C library ParticlesList routines.
   
   This class can be thought of as a generator and
-  manager of the underlying C++ SpeciesList struct.
+  manager of the underlying C++ ParticlesList struct.
   
-  See "extern" in SpeciesList.h.
+  See "extern" in ParticlesList.h.
   
   Attributes:
     nP (int) - number of particles, must be specified.
@@ -19,7 +19,7 @@ class SpeciesGen(object):
     wfP (unsigned shorts or None) - width of kernel for each particle.
     cwfP (doubles or None) - dimensionless radii of particles.
     betafP (doubles or None) - ES kernel beta parameter for each particle.
-    species (ptr to C++ struct) - a pointer to the generated C++ SpeciesList struct
+    particles (ptr to C++ struct) - a pointer to the generated C++ ParticlesList struct
     
     If any of the inputs that can be None are None, the assumption is that
     they will be populated by a call to the C library, such as RandomConfig(grid)
@@ -27,7 +27,7 @@ class SpeciesGen(object):
   def __init__(self, _nP, _dof, \
               _xP = None, _fP = None, _radP = None, _wfP = None, _cwfP = None, _betafP = None):
     """ 
-    The constructor for the SpeciesGen class.
+    The constructor for the ParticlesGen class.
     
     Parameters:
       nP (int) - number of particles, must be specified.
@@ -41,33 +41,33 @@ class SpeciesGen(object):
 
     Side Effects:
       The prototypes for relevant functions from the 
-      C++ SpeciesList library are declared. Any functions added
-      to the "extern" definition in SpeciesList.h should be
+      C++ ParticlesList library are declared. Any functions added
+      to the "extern" definition in ParticlesList.h should be
       declared here.
     """ 
-    libSpecies.MakeSpecies.argtypes = [ctypes.POINTER(ctypes.c_double), \
+    libParticles.MakeParticles.argtypes = [ctypes.POINTER(ctypes.c_double), \
                                        ctypes.POINTER(ctypes.c_double), \
                                        ctypes.POINTER(ctypes.c_double), \
                                        ctypes.POINTER(ctypes.c_double), \
                                        ctypes.POINTER(ctypes.c_double), \
                                        ctypes.POINTER(ctypes.c_ushort), \
                                        ctypes.c_uint, ctypes.c_uint]
-    libSpecies.MakeSpecies.restype = ctypes.c_void_p 
+    libParticles.MakeParticles.restype = ctypes.c_void_p 
     
-    libSpecies.Setup.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-    libSpecies.Setup.restype = None  
+    libParticles.Setup.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    libParticles.Setup.restype = None  
     
-    libSpecies.RandomConfig.argtypes = [ctypes.c_void_p, ctypes.c_uint]
-    libSpecies.RandomConfig.restype = ctypes.c_void_p
+    libParticles.RandomConfig.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+    libParticles.RandomConfig.restype = ctypes.c_void_p
 
-    libSpecies.CleanSpecies.argtypes = [ctypes.c_void_p]
-    libSpecies.CleanSpecies.restype = None
+    libParticles.CleanParticles.argtypes = [ctypes.c_void_p]
+    libParticles.CleanParticles.restype = None
   
-    libSpecies.DeleteSpecies.argtypes = [ctypes.c_void_p] 
-    libSpecies.DeleteSpecies.restype = None
+    libParticles.DeleteParticles.argtypes = [ctypes.c_void_p] 
+    libParticles.DeleteParticles.restype = None
     
-    libSpecies.WriteSpecies.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    libSpecies.WriteSpecies.restype = None
+    libParticles.WriteParticles.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    libParticles.WriteParticles.restype = None
 
     # number of particles
     self.nP = _nP
@@ -85,21 +85,21 @@ class SpeciesGen(object):
     self.wfP = _wfP
     # actual radii of the particles
     self.radP = _radP
-    # pointer to c++ SpeciesList struct
-    self.species = None
+    # pointer to c++ ParticlesList struct
+    self.particles = None
   
 
   def Make(self):
     """
-    Python wrapper for the MakeSpecies(...) C lib routine.
+    Python wrapper for the MakeParticles(...) C lib routine.
 
-    This instantiates a SpeciesList object and stores a pointer to it.
+    This instantiates a ParticlesList object and stores a pointer to it.
 
     Parameters: None
     Side Effects:
-      self.species is assigned the pointer to the C++ SpeciesList instance
+      self.particles is assigned the pointer to the C++ ParticlesList instance
     """
-    self.species = libSpecies.MakeSpecies(self.xP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
+    self.particles = libParticles.MakeParticles(self.xP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
                                           self.fP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
                                           self.radP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
                                           self.betafP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
@@ -110,42 +110,42 @@ class SpeciesGen(object):
 
   def Setup(self, grid):
     """
-    The python wrapper for the Setup(species,grid) C lib routine
+    The python wrapper for the Setup(particles,grid) C lib routine
     This function computes internal data structures, like
-    the species-grid locator, effective kernel widths, etc.
+    the particles-grid locator, effective kernel widths, etc.
 
     Parameters:
       grid - a pointer to a valid C++ Grid instance (stored in GridGen)
     Side Effects:
-      The data pointed to by self.species is modified and extended with
+      The data pointed to by self.particles is modified and extended with
       additional information given the grid.
       The data pointed to by grid is modified and extended with
-      additional information given the species.
+      additional information given the particles.
     """
-    libSpecies.Setup(self.species, grid)
+    libParticles.Setup(self.particles, grid)
 
-  def WriteSpecies(self, fname):
+  def WriteParticles(self, fname):
     """
-    Python wrapper for the WriteSpecies(species,fname) C lib routine
-    This writes the current state of the SpeciesList to file  
+    Python wrapper for the WriteParticles(particles,fname) C lib routine
+    This writes the current state of the ParticlesList to file  
  
     Parameters: 
       fname (string) - desired name of file
     Side Effects: None, besides file creation and write 
     """
     b_fname = fname.encode('utf-8')
-    libSpecies.WriteSpecies(self.species, b_fname)    
+    libParticles.WriteParticles(self.particles, b_fname)    
   
   def Clean(self):
     """
-    Python wrapper for the CleanSpecies(..) C lib routine.
-    This cleans the SpeciesList struct returned by Make(),
+    Python wrapper for the CleanParticles(..) C lib routine.
+    This cleans the ParticlesList struct returned by Make(),
     frees any memory internally allocated, and deletes the
-    pointer to the SpeciesList struct stored in the class.
+    pointer to the ParticlesList struct stored in the class.
 
     Parameters: None
     Side Effects:
-      self.species is deleted (along with underlying data) and nullified
+      self.particles is deleted (along with underlying data) and nullified
     """
-    libSpecies.CleanSpecies(self.species)
-    libSpecies.DeleteSpecies(self.species)
+    libParticles.CleanParticles(self.particles)
+    libParticles.DeleteParticles(self.particles)

@@ -3,7 +3,7 @@
 #include<fftw3.h>
 #include "Grid.h"
 #include "exceptions.h"
-#include "chebyshev.h"
+#include "quadrature.h"
 
 Grid::Grid() : fG(0), fG_unwrap(0), xG(0), yG(0), zG(0), firstn(0), 
                nextn(0), number(0), Nx(0), Ny(0), Nz(0), Lx(0), 

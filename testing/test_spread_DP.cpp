@@ -3,7 +3,7 @@
 #include<fstream>
 #include<fftw3.h>
 #include"SpreadInterp.h"
-#include"SpeciesList.h"
+#include"ParticleList.h"
 #include"Grid.h"
 
 
@@ -14,19 +14,19 @@ int main(int argc, char* argv[])
   const unsigned int Nx = 64, Ny = 64, Nz = 25, dof = 3; 
   const double hx = 0.5, hy = 0.5, hz = 0.5, Lx = Nx * hx, Ly = Ny * hy, Lz = Nz * hz; 
 
-  Grid grid; SpeciesList species;
+  Grid grid; ParticleList particles;
   grid.makeDP(Lx, Ly, Lz, hx, hy, Nx, Ny, Nz, dof);
-  species.randInit(grid, atoi(argv[1]));
-  spread(species, grid); 
+  particles.randInit(grid, atoi(argv[1]));
+  spread(particles, grid); 
 
-  interpolate(species, grid);
+  interpolate(particles, grid);
 
-  species.writeSpecies("particles.txt");
+  particles.writeParticles("particles.txt");
   grid.writeGrid("spread.txt");
   grid.writeCoords("coords.txt");  
  
 
-  species.cleanup();
+  particles.cleanup();
   grid.cleanup();
   return 0;
 }

@@ -1,12 +1,12 @@
 #include <lapacke.h>
 #include <cblas.h>
 #include <omp.h>
-#include <complex.h>
+
 extern "C"
 {
-  // compute LU of banded matrix A as well as X in AX = B
-  // A is overwritten with LU info on output, and B is 
-  // overwritten with X.
+  /* compute LU of banded matrix A as well as X in AX = B
+     A is overwritten with LU info on output, and B is 
+     overwritten with X. */
   void precomputeBandedLinOps(double* A, double* B, double* C, 
                               double* D, double* G, double* G_inv, int* PIV, int kl, 
                               int ku, int Nyx, int Nz) 
@@ -39,12 +39,9 @@ extern "C"
       g_inv[3] = g[0] * det; 
     }
   }
-//(7, 29, 16384)A
-//(29, 2, 16384)B
-//(2, 29, 16384)C
-//(2, 2, 16384)D
-//  #(2*kl+ku+1, Nz, Nxy) 
 
+  /* Use the precomputed LU of banded matrix A to solve AX = RHS.
+     RHS is overwritten with X */ 
   void bandedSchurSolve(double* LU, double* RHS, int* PIV, int kl, int ku, int Nyx, int Nz)
   {
     int nrhs = 1, ldab = 2 * kl + ku + 1;

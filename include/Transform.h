@@ -4,10 +4,8 @@
 #include<iostream>
 #include "exceptions.h"
 
-// Forward and Backward Fourier transform object.
-// Currently, only triple periodicity is supported,
-// with imminent plans to add double periodicity for
-// Fourier-Chebyshev transform.
+/* Forward and Backward Fourier transform object
+   which wraps desired features of fftw */
 
 struct Transform
 {

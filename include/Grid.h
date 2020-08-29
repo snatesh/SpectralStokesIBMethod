@@ -15,6 +15,9 @@
  * Nxeff, Nyeff, Nzeff    - num points in each dimension for EXTENDED grid
  * has_locator            - bool indicated whether a grid locator has been constructed
  * (x,y,z)descend         - bools indicated sorting order of grids, if provided (set internally)
+ * firstn, nextn          - enables the lookup of particles in terms of columns of the grid 
+                            for column ind, grid.firstn[ind] = i1 is the index of the first particle in the column
+                            grid.nextn[i1] = i2 is the index of the next particle in the column, and so on.
 */ 
 
 
@@ -44,14 +47,18 @@ struct Grid
   void seth(const double hx, const double hy, const double hz);
   void setZ(const double* zpts, const double* zwts);  
   void setBCs(const BC* BCs);
+  /* Create a valid triply periodic grid. The caller only provides these params */
   void makeTP(const double Lx, const double Ly, const double Lz, 
               const double hx, const double hy, const double hz,
               const unsigned int Nx, const unsigned int Ny, 
               const unsigned int Nz, const unsigned int dof);
+  /* Create a valid doubly periodic grid. The caller only provides these params.
+     By default, a Chebyshev grid will be constructed and stored in zG, zG_wts */
   void makeDP(const double Lx, const double Ly, const double Lz, 
               const double hx, const double hy, 
               const unsigned int Nx, const unsigned int Ny, 
               const unsigned int Nz, const unsigned int dof);
+  /* clean memory */
   void cleanup();
   // helper called in setup to determine max spacing in non-uniform axis
   void configAxis(double& heff, unsigned int& Neff, const double* axis, 

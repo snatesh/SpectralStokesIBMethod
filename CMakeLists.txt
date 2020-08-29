@@ -63,9 +63,9 @@ install(FILES ${spreadInterp_INC_FILES} DESTINATION include)
 
 # setting lib src files
 
-set(chebSRC src/chebyshev.cpp)
+set(chebSRC src/quadrature.cpp)
 set(gridSRC src/Grid.cpp)
-set(speciesSRC src/SpeciesList.cpp)
+set(particlesSRC src/ParticleList.cpp)
 set(spreadInterpSRC src/SpreadInterp.cpp)
 set(transformSRC src/Transform.cpp)
 set(spreadInterpTPTestSRC testing/test_spread_TP.cpp)
@@ -87,13 +87,13 @@ add_library(grid SHARED ${gridSRC})
 set_source_files_properties(${gridSRC} PROPERTIES COMPILE_FLAGS "-O3 -fPIC")
 target_link_libraries(grid cheb fftw3)
 
-add_library(species SHARED ${speciesSRC})
-set_source_files_properties(${speciesSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
-target_link_libraries(species grid cheb)
+add_library(particles SHARED ${particlesSRC})
+set_source_files_properties(${particlesSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
+target_link_libraries(particles grid cheb)
 
 add_library(spreadInterp SHARED ${spreadInterpSRC})
 set_source_files_properties(${spreadInterpSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
-target_link_libraries(spreadInterp species)
+target_link_libraries(spreadInterp particles)
 
 add_library(transform SHARED ${transformSRC})
 set_source_files_properties(${transformSRC} PROPERTIES COMPILE_FLAGS "-lfftw3 -lm -fPIC -fopenmp")
@@ -106,7 +106,7 @@ set_source_files_properties(${linSolveSRC} PROPERTIES COMPILE_FLAGS "-lm -llapac
 install(TARGETS spreadInterp ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS cheb ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS grid ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
-install(TARGETS species ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS particles ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS transform ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS linSolve ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 ## build executables ##

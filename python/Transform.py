@@ -160,6 +160,23 @@ class Transformer(object):
     self.out_complex = np.ctypeslib.as_array(libTransform.getComplexOut(self.transform), shape=(self.Ntotal,)) / self.N
 
   def Btransform_cheb(self):
+    """
+    Python wrapper for the Btransform_cheb(...) C lib routine when
+    the z axis is Chebyshev.
+
+    This computes the backward plan and executes a backward
+    transform on the input data. The results in out_real/out_complex 
+    will be the Fourier-Chebyshev coefficients of the input
+
+    Parameters: None
+    Side Effects:
+      self.transform is assigned the pointer to the C++ Transform instance
+      self.in_real is replaced by itself with the z axis periodically extended (doubled and flipped)
+      self.in_complex is replaced by itself with the z axis periodically extended (doubled and flipped)
+      self.out_real is populated with the real part of the output transform
+      self.out_complex is populated with the complex part of the output transform
+
+    """
     Ur = np.empty(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
           ((2 * self.Nz - 2), self.Ny, self.Nx, self.dof))
     Uc = np.empty(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\

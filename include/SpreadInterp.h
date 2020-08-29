@@ -11,20 +11,19 @@
   #define MEM_ALIGN 16 
 #endif
 
-/* Main routines for spreading and interpolation 
-   Both are supported for Triply Periodic
-   Only spreading is supported for Doubly Periodic (TODO)
-*/
+/* Main routines for spreading and interpolation, with
+   the appropriate routines dispatched based on
+   specified boundary conditions */
 
 
 // forward declarations
-class Grid;
-class SpeciesList;
+struct Grid;
+struct ParticleList;
 
 
 // spread and interpolate
-void spread(SpeciesList& species, Grid& grid); 
-void interpolate(SpeciesList& species, Grid& grid);
+void spread(ParticleList& particles, Grid& grid); 
+void interpolate(ParticleList& particles, Grid& grid);
 
 /* C wrapper for calling from Python. Any functions
    defined here should also have their prototypes 
@@ -32,17 +31,17 @@ void interpolate(SpeciesList& species, Grid& grid);
 extern "C"
 {
   double* GetGridSpread(Grid* grid);
-  double* getSpeciesInterp(SpeciesList* species);
-  double* Spread(SpeciesList* s, Grid* g) {spread(*s, *g); return GetGridSpread(g);}
-  double* Interpolate(SpeciesList* s, Grid* g) {interpolate(*s, *g); return getSpeciesInterp(s);}
+  double* getParticlesInterp(ParticleList* particles);
+  double* Spread(ParticleList* s, Grid* g) {spread(*s, *g); return GetGridSpread(g);}
+  double* Interpolate(ParticleList* s, Grid* g) {interpolate(*s, *g); return getParticlesInterp(s);}
 }
 
 // spread with z uniform or not
-void spreadUnifZ(SpeciesList& species, Grid& grid);
-void spreadNonUnifZ(SpeciesList& species, Grid& grid);
+void spreadUnifZ(ParticleList& particles, Grid& grid);
+void spreadNonUnifZ(ParticleList& particles, Grid& grid);
 // interpolate with z uniform or not
-void interpUnifZ(SpeciesList& species, Grid& grid);
-void interpNonUnifZ(SpeciesList& species, Grid& grid);
+void interpUnifZ(ParticleList& particles, Grid& grid);
+void interpNonUnifZ(ParticleList& particles, Grid& grid);
 
 // ES kernel definition (two versions for optimization testing)
 #pragma omp declare simd
@@ -94,7 +93,7 @@ inline void scatter(unsigned int N, T const* trg, T* src,
   }
 }
 
-// evaluate the delta function weights for the current column for TRIPLY PERIODIC
+// evaluate the delta function weights for the current column for UnifZ = True
 inline void delta_eval_col(double* delta, const double* betafPc,
                            const unsigned short* wfPc, const double* normfPc, 
                            const double* xunwrap, const double* yunwrap, 
@@ -125,7 +124,7 @@ inline void delta_eval_col(double* delta, const double* betafPc,
   }
 }
 
-// evaluate the delta function weights for the current column for DOUBLY PERIODIC
+// evaluate the delta function weights for the current column for UnifZ = false
 inline void delta_eval_col(double* delta, const double* betafPc,
                            const unsigned short* wfPc, const double* normfPc, 
                            const double* xunwrap, const double* yunwrap, 
@@ -155,7 +154,7 @@ inline void delta_eval_col(double* delta, const double* betafPc,
   }
 }
 
-// spread the delta functions weights for the column for TRIPLY PERIODIC
+// spread the delta functions weights for the column for UnifZ = true
 inline void spread_col(double* Fec, const double* delta, const double* flc,
                        const unsigned int* zoffset, const int npts,
                        const int w3, const int dof)
@@ -173,7 +172,7 @@ inline void spread_col(double* Fec, const double* delta, const double* flc,
   }
 }
 
-// spread with forces and weights for the column for DOUBLY PERIODIC
+// spread with forces and weights for the column for UnifZ = false
 inline void spread_col(double* Fec, const double* delta, const double* flc,
                        const unsigned int* zoffset, const int npts,
                        const int w2, const unsigned short* wz, const int dof)
