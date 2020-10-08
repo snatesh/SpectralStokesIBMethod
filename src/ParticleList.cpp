@@ -6,21 +6,21 @@
 #include<omp.h>
 #include<math.h>
 #include<fftw3.h>
-#include "ParticleList.h"
-#include "Grid.h"
-#include "Quadrature.h"
-#include "exceptions.h"
+#include"ParticleList.h"
+#include"Grid.h"
+#include"Quadrature.h"
+#include"exceptions.h"
 
 
 #ifndef MEM_ALIGN
   #define MEM_ALIGN 16 
 #endif
 
-#pragma omp declare simd
-inline double const esKernel(const double x, const double beta, const double alpha)
-{
-  return exp(beta * (sqrt(1 - x * x / (alpha * alpha)) - 1));
-}
+//#pragma omp declare simd
+//inline double const esKernel(const double x, const double beta, const double alpha)
+//{
+//  return exp(beta * (sqrt(1 - x * x / (alpha * alpha)) - 1));
+//}
 
 // null initialization
 ParticleList::ParticleList() : xP(0), fP(0), betafP(0), alphafP(0), 
@@ -77,6 +77,16 @@ void ParticleList::setForces(const double* _fP, unsigned int _dof)
   }
   #pragma omp parallel for
   for (unsigned int i = 0; i < dof * nP; ++i) this->fP[i] = _fP[i]; 
+}
+
+void ParticleList::zeroForces()
+{
+  if (this->fP)
+  {
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < dof * nP; ++i) this->fP[i] = 0;
+  }
+  else exitErr("Forces have not been allocated.");
 }
 
 void ParticleList::setup()
@@ -267,10 +277,8 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       zoffset[i] = wx * wy * (zclose[i] - wz / 2 + evenz + wfzP_max);    
       grid.nextn[i] = -1;
     }
-    #pragma omp for nowait
+    #pragma omp for 
     for (unsigned int i = 0; i < N2; ++i) {grid.firstn[i] = -1; grid.number[i] = 0;}
-    #pragma omp for
-    for (unsigned int i = 0; i < N3 * grid.dof; ++i) grid.fG_unwrap[i] = 0;
   }
 
   int ind, indn;
@@ -434,10 +442,8 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       zoffset[i] = wx * wy * indl[i];   
       grid.nextn[i] = -1;
     }
-    #pragma omp for nowait
-    for (unsigned int i = 0; i < N2; ++i) {grid.firstn[i] = -1; grid.number[i] = 0;}
     #pragma omp for
-    for (unsigned int i = 0; i < N3 * grid.dof; ++i) grid.fG_unwrap[i] = 0;
+    for (unsigned int i = 0; i < N2; ++i) {grid.firstn[i] = -1; grid.number[i] = 0;}
   }
 
   int ind, indn;

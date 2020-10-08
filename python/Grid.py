@@ -1,4 +1,5 @@
 import ctypes
+import numpy as np
 libGrid = ctypes.CDLL('../lib/libgrid.so')
 
 class GridGen(object):
@@ -8,7 +9,7 @@ class GridGen(object):
   This class can be thought of as a generator and
   manager of the underlying C++ Grid struct.
   
-  See "extern" in Grid.h.
+  See GridWrapper.cpp..
   
   Attributes:
     Lx, Ly, Lz (double) - length in x,y and z
@@ -72,7 +73,10 @@ class GridGen(object):
   
     libGrid.Setdof.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     libGrid.Setdof.restype = None
-  
+
+    libGrid.ZeroExtGrid.argtypes = [ctypes.c_void_p]
+    libGrid.ZeroExtGrid.restype = None 
+ 
     libGrid.SetupGrid.argtypes = [ctypes.c_void_p]
     libGrid.SetupGrid.restype = None
     
@@ -91,6 +95,9 @@ class GridGen(object):
     libGrid.SetSpread.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)] 
     libGrid.SetSpread.restype = None 
 
+    libGrid.GetSpread.argtypes = [ctypes.c_void_p] 
+    libGrid.GetSpread.restype = ctypes.POINTER(ctypes.c_double) 
+    
     # length in x,y,z
     self.Lx = _Lx
     self.Ly = _Ly
@@ -147,9 +154,21 @@ class GridGen(object):
     libGrid.Setdof(self.grid, self.dof) 
     libGrid.SetupGrid(self.grid)  
 
+  def ZeroExtGrid(self):
+    """
+    Python wrapper for ZeroExtGrid(grid) C lib routine
+    This zeros the extended grid, and must be called
+    before spreading.
+
+    Parameter : none
+    Side Effects: 
+      self.grid.fG_unwrap is overwritten with 0s 
+    """
+    libGrid.ZeroExtGrid(self.grid)
+
   def SetSpread(self, new_data):
     """
-    Python wrapper for the SetGridSpread(grid) C lib routine
+    Python wrapper for the SetSpread(grid) C lib routine
     This sets new data on the Grid by overwriting
     the data member grid.fG with new_data
     
@@ -159,6 +178,17 @@ class GridGen(object):
       self.grid.fG (in C) is overwritten with new_data, so the data pointed to by grid is changed
     """
     libGrid.SetSpread(self.grid, new_data.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
+  
+  def GetSpread(self):
+    """
+    Python wrapper for the GetSpread(grid) C lib routine
+    This sets gets a pointer to the data spread on the grid
+    
+    Parameters: None 
+    Side Effects: None
+    Returns: numpy array containing pointer to spread data on grid
+    """
+    return np.ctypeslib.as_array(libGrid.GetSpread(self.grid), shape=(self.Ntotal, ))
 
   def WriteGrid(self, fname):
     """

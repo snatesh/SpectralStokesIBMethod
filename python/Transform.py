@@ -9,7 +9,7 @@ class Transformer(object):
   This class can be thought of as a generator and
   manager of the underlying C++ Transform struct.
   
-  See "extern" in Transform.h.
+  See TransformWrapper.cpp.
   
   Attributes:
     in_real (double array) - real part of the input data.
@@ -139,6 +139,7 @@ class Transformer(object):
     self.out_complex[-1,:,:,:] = _out_complex[self.Nz-1,:,:,:]
     self.out_real /= (2 * self.Nz - 2)
     self.out_complex /= (2 * self.Nz - 2)
+  
   def Btransform(self):
     """
     Python wrapper for the Btransform(...) C lib routine.

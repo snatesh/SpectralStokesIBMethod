@@ -1,9 +1,10 @@
 #include<fstream>
 #include<iomanip>
 #include<fftw3.h>
-#include "Grid.h"
-#include "exceptions.h"
-#include "Quadrature.h"
+#include<omp.h>
+#include"Grid.h"
+#include"exceptions.h"
+#include"Quadrature.h"
 
 Grid::Grid() : fG(0), fG_unwrap(0), xG(0), yG(0), zG(0), firstn(0), 
                nextn(0), number(0), Nx(0), Ny(0), Nz(0), Lx(0), 
@@ -77,6 +78,21 @@ void Grid::setZ(const double* zpts, const double* zwts)
   }
 }
 
+void Grid::zeroExtGrid()
+{
+  if (this->fG_unwrap)
+  {
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < Nxeff * Nyeff * Nzeff * dof; ++i)
+    {
+      fG_unwrap[i] = 0;
+    }
+  }
+  else
+  {
+    exitErr("Extended grid has not been allocated.");
+  }
+}
 void Grid::makeTP(const double Lx, const double Ly, const double Lz, 
                   const double hx, const double hy, const double hz,
                   const unsigned int Nx, const unsigned int Ny, 

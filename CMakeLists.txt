@@ -73,6 +73,7 @@ set(linSolveSRC src/LinearSolvers.cpp)
 set(spreadInterpDPTestSRC testing/test_spread_DP.cpp)
 set(chebTestSRC testing/test_cheb.cpp)
 set(transformTestSRC testing/test_transform_TP.cpp)
+set(bcSRC wrapper/BCWrapper.cpp)
 
 # set build output paths
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -84,7 +85,7 @@ set_source_files_properties(${chebSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info 
 target_link_libraries(cheb gomp)
 
 add_library(grid SHARED ${gridSRC})
-set_source_files_properties(${gridSRC} PROPERTIES COMPILE_FLAGS "-O3 -fPIC")
+set_source_files_properties(${gridSRC} PROPERTIES COMPILE_FLAGS "-O3 -fPIC -fopenmp")
 target_link_libraries(grid cheb fftw3)
 
 add_library(particles SHARED ${particlesSRC})
@@ -102,6 +103,9 @@ target_link_libraries(transform fftw3 fftw3_omp gomp)
 add_library(linSolve SHARED ${linSolveSRC})
 set_source_files_properties(${linSolveSRC} PROPERTIES COMPILE_FLAGS "-lm -llapacke -lblas -fopenmp -fPIC")
 
+add_library(BC SHARED ${bcSRC})
+set_source_files_properties(${bcSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
+
 # install libs
 install(TARGETS spreadInterp ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS cheb ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
@@ -109,6 +113,7 @@ install(TARGETS grid ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS particles ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS transform ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS linSolve ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS BC ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 ## build executables ##
 
   

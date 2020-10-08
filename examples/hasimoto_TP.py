@@ -7,6 +7,7 @@ from Grid import *
 from Particles import *
 from SpreadInterp import *
 from Transform import *
+from Ghost import *
 from Solvers import TriplyPeriodicStokes
 
 nTrials = 50
@@ -63,10 +64,14 @@ for iL in np.arange(0,Ls.size):
     # this builds the particles-grid locator and defines other
     # interal data used to spread and interpolate
     particlesGen.Setup(gridGen.grid)
-    
+    # initialize extended grid
+    gridGen.ZeroExtGrid()    
     # spread forces on the particles (C lib)
-    fG = Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
-
+    Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+    # handle TP BCs
+    DeGhostify(gridGen.grid, particlesGen.particles)
+    # get spread data
+    fG = gridGen.GetSpread()
     # instantiate transform wrapper with spread forces (C lib)
     fTransformer = Transformer(fG, None, Nx, Ny, Nz, dof)
     fTransformer.Ftransform()
@@ -82,13 +87,18 @@ for iL in np.arange(0,Ls.size):
     bTransformer.Btransform()
     # get real part of back transform
     uG_r = bTransformer.out_real
-    
+   
+
     # set velocity as new grid spread (C lib)
     gridGen.SetSpread(uG_r)
-    
+    # reinitialize data on particles before interp
+    particlesGen.ZeroForces() 
+    # ensure periodicity of spread data by copying to periodic ghost region
+    Ghostify(gridGen.grid, particlesGen.particles) 
     # interpolate velocities on the particles (C lib)
-    vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
-    
+    Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+    # get interp data
+    vP = particlesGen.GetForces()
     # save x mobility
     mobx[iL,iTrial] = vP[0] 
  

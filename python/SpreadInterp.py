@@ -4,11 +4,11 @@ import numpy as np
 """
 Python wrappers for C library Spread/Interp routines
 
-See "extern" in SpreadInterp.h.
+See SpreadInterpWrapper.cpp
 
 The prototypes for relevant functions from the 
 C++ SpreadInterp library are declared. Any functions added
-to the "extern" definition in SpreadInterp.h should be
+to the "extern" definition in SpreadInterpWrapper.cpp should be
 declared here.
 """
 libSpreadInterp = ctypes.CDLL('../lib/libspreadInterp.so')
@@ -27,13 +27,11 @@ def Spread(s, g, N):
     g - a pointer to the C++ Grid struct
     N - total number of elements (Nx * Ny * Nz * dof)
   
-  Returns:
-    fG - a flat numpy array containing the spread data (Nz*Ny*Nx*dof,1) 
-  
+  Returns: None  
   Side Effects:
     The C++ Grid data member g.fG is populated with the spread data
   """
-  return np.ctypeslib.as_array(libSpreadInterp.Spread(s,g), shape=(N, ))
+  libSpreadInterp.Spread(s,g)
 
 def Interpolate(s, g, N):
   """
@@ -44,10 +42,8 @@ def Interpolate(s, g, N):
     g - a pointer to the C++ Grid struct
     N - total number of elements (nP * dof)
   
-  Returns:
-    fP - a flat numpy array containing the interpolated data on the particles (nP*dof,1)
-  
+  Returns: None 
   Side Effects:
     The C++ ParticleList data member s.fP is populated with the interpolated data
   """
-  return np.ctypeslib.as_array(libSpreadInterp.Interpolate(s,g), shape=(N, ))
+  libSpreadInterp.Interpolate(s,g)

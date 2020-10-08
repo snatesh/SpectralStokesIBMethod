@@ -1,4 +1,5 @@
 #include"SpreadInterp.h"
+#include"BoundaryConditions.h"
 #include"Grid.h"
 #include"ParticleList.h"
 #include"exceptions.h"
@@ -12,46 +13,37 @@ void spread(ParticleList& particles, Grid& grid)
   {
     spreadUnifZ(particles, grid);
     // fold spread data from ghost region of extended grid into the interior
-    fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-         particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
+    //fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
+    //     particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
+    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
   }
   else
   {
     spreadNonUnifZ(particles, grid);
     // fold spread data from ghost region of extended grid into the interior
-    fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-         particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
+    //fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
+    //     particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
+    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
   } 
 
 }
 
 void interpolate(ParticleList& particles, Grid& grid)
 {
-  // reinitialize force for interp
-  #pragma omp parallel
-  {
-    #pragma omp for
-    for (unsigned int i = 0; i < particles.nP * particles.dof; ++i) particles.fP[i] = 0;
-    #pragma omp for
-    for (unsigned int i = 0; i < grid.Nxeff * grid.Nyeff * grid.Nzeff * grid.dof; ++i) {grid.fG_unwrap[i] = 0;}
-  }
-
   if (grid.unifZ)
   {
     // copy data from wrapped to unwrapped grid based on BCs
-    copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-         particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
+    //copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
+    //     particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
+    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
     interpUnifZ(particles, grid);
   }
   else
   {
     // copy data from wrapped to unwrapped grid based on BCs
-    copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-         particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
+    //copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
+    //     particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
+    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
     interpNonUnifZ(particles, grid);
   }
 }

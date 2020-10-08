@@ -9,7 +9,7 @@ from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
 from Solvers import DoublyPeriodicStokes_no_wall
-
+from Ghost import *
 nTrials = 1
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
@@ -73,11 +73,16 @@ for iL in range(0,Ls.size):
     particles = particlesGen.Make()
     # setup the particles on the grid with C lib call
     # this builds the particles-grid locator and defines other
-    # interal data used to spread and interpolate
+    # interal data used to spread and interpolate, including ghost points
     particlesGen.Setup(gridGen.grid)
-    
+    # initialize the extended grid data 
+    gridGen.ZeroExtGrid()
     # spread forces on the particles (C lib)
-    fG = Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+    Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+    # enforce DP boundary conditions on spread data
+    DeGhostify(gridGen.grid, particlesGen.particles)
+    # get spread data
+    fG = gridGen.GetSpread()
     # instantiate transform wrapper with spread forces (C lib)
     fTransformer = Transformer(fG, None, Nx, Ny, Nz, dof)
     fTransformer.Ftransform_cheb()
@@ -96,9 +101,14 @@ for iL in range(0,Ls.size):
     
     # set velocity as new grid spread (C lib)
     gridGen.SetSpread(uG_r)
-    
+    # reinitialize forces for interp
+    particlesGen.ZeroForces()
+    # copy data to ghost cells to enforce DP boundary conditions before interp
+    Ghostify(gridGen.grid, particlesGen.particles)
     # interpolate velocities on the particles (C lib)
-    vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+    Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+    # get interp data
+    vP = particlesGen.GetForces()
     print(vP)
     
     # save x mobility

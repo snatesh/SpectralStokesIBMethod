@@ -30,6 +30,7 @@ extern "C"
   void SetPeriodicity(Grid* grid, bool x, bool y, bool z) {grid->setPeriodicity(x,y,z);}
   void SetBCs(Grid* grid, unsigned int* BCs) {grid->setBCs(reinterpret_cast<BC*>(BCs));}
   void Setdof(Grid* grid, const unsigned int dof) {grid->dof = dof;}
+  void ZeroExtGrid(Grid* grid){grid->zeroExtGrid();}
 
   void CleanGrid(Grid* g) {g->cleanup();}
   void DeleteGrid(Grid* g) {if(g) {delete g; g = 0;}} 

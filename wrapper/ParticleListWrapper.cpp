@@ -1,6 +1,6 @@
 #include "ParticleList.h"
 
-/* C wrapper for calling from Python. Any functions
+/* C wrapper for calling ParticleList methods from Python. Any functions
    defined here should also have their prototypes 
    and wrappers defined in ParticleList.py */
 extern "C"
@@ -25,6 +25,9 @@ extern "C"
   {
     particles->setForces(_fP, dof);
   }
+  
+  /* zero the data on particles */
+  void ZeroForces(ParticleList* particles) {particles->zeroForces();}
   double* GetForces(ParticleList* particles) {return particles->fP;}
   
   /* create random configuration given the grid and number of particles 

@@ -7,6 +7,7 @@ from Grid import *
 from Particles import *
 from SpreadInterp import *
 from Transform import *
+from Ghost import *
 from Solvers import TriplyPeriodicStokes
 
 # grid info 
@@ -70,9 +71,14 @@ particlesGen.Make()
 # this builds the particles-grid locator and defines other
 # interal data used to spread and interpolate
 particlesGen.Setup(gridGen.grid)
-
+# initialize extended grid
+gridGen.ZeroExtGrid()
 # spread forces on the particles (C lib)
-fG = Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+# handle triply periodic BCs
+DeGhostify(gridGen.grid, particlesGen.particles)
+# get spread data
+fG = gridGen.GetSpread()
 # write the grid with spread to file (C lib)
 gridGen.WriteGrid('spread.txt')
 gridGen.WriteCoords('coords.txt')  
@@ -95,9 +101,13 @@ uG_r = bTransformer.out_real
 
 # set velocity as new grid spread (C lib)
 gridGen.SetSpread(uG_r)
-
+# reinitialize forces on particles before interp
+particlesGen.ZeroForces()
+# populate ghost points according to triply periodic BCs
+Ghostify(gridGen.grid, particlesGen.particles)
 # interpolate velocities on the particles (C lib)
-vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+vP = particlesGen.GetForces()
 print(vP)
 # write particles with interpolated vel to file (C lib)
 particlesGen.WriteParticles('particles.txt')

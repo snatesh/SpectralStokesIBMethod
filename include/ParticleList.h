@@ -83,6 +83,8 @@ struct ParticleList
   void findUniqueKernels();
   /* set data on particles */
   void setForces(const double* _fP, unsigned int dof); 
+  /* set forces to 0 */
+  void zeroForces();
   /* Locate the particles in terms of the columns of the grid,
      dispatching either locateOnGridUnifZ or locateOnGridNonUnivZ
      based on grid.unifZ boolean

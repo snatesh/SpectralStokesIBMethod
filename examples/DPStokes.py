@@ -9,6 +9,7 @@ from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
 from Solvers import DoublyPeriodicStokes_no_wall
+from Ghost import *
 import timeit
 
 
@@ -70,7 +71,7 @@ for iP in np.arange(0,nP):
   #xP[1 + 3 * iP] = random.random() * (Ly - hy)
   #xP[2 + 3 * iP] = random.random() * Lz 
   for j in np.arange(0,dof):
-    fP[j + dof * iP] = 10.0
+    fP[j + dof * iP] = 1.0
 xP[0::3] += Lx / 2.0
 xP[1::3] += Lx / 2.0
 # if no wall, choose whether to 0 the k=0 mode of the RHS
@@ -78,28 +79,33 @@ xP[1::3] += Lx / 2.0
 # k0 = 1 - the k=0 mode of the RHS for pressure and velocity will not be 0
 #        - there will be a correction to the k=0 mode after each solve
 k0 = 0;
+  
+# instantiate the python grid wrapper
+gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
+# instantiate and define the grid with C lib call
+# this sets the GridGen.grid member to a pointer to a C++ Grid struct
+gridGen.Make()
+# instantiate the python particles wrapper
+particlesGen = ParticlesGen(nP, dof, xP, fP, radP, wfP, cwfP, betafP)
+# instantiate and define the particles with C lib call
+# this sets the ParticlesGen.particles member to a pointer to a C++ ParticlesList struct
+particlesGen.Make()
+# setup the particles on the grid with C lib call
+# this builds the particles-grid locator and defines other
+# interal data used to spread and interpolate
+particlesGen.Setup(gridGen.grid)
 
 time = 0.0
 nits = 10
 for j in range(0,nits):
   t0 = timeit.default_timer()
-  # instantiate the python grid wrapper
-  gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
-  # instantiate and define the grid with C lib call
-  # this sets the GridGen.grid member to a pointer to a C++ Grid struct
-  gridGen.Make()
-  # instantiate the python particles wrapper
-  particlesGen = ParticlesGen(nP, dof, xP, fP, radP, wfP, cwfP, betafP)
-  # instantiate and define the particles with C lib call
-  # this sets the ParticlesGen.particles member to a pointer to a C++ ParticlesList struct
-  particlesGen.Make()
-  # setup the particles on the grid with C lib call
-  # this builds the particles-grid locator and defines other
-  # interal data used to spread and interpolate
-  particlesGen.Setup(gridGen.grid)
-  
+  # initialize the extended grid data 
+  gridGen.ZeroExtGrid()
   # spread forces on the particles (C lib)
-  fG = Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+  Spread(particlesGen.particles, gridGen.grid, gridGen.Ntotal)
+  # enforce DP boundary conditions on spread data
+  DeGhostify(gridGen.grid, particlesGen.particles)
+  fG = gridGen.GetSpread()
   if write:
     # write the grid with spread to file (C lib)
     gridGen.WriteGrid('spread.txt')
@@ -122,17 +128,26 @@ for j in range(0,nits):
   uG_i = bTransformer.out_complex
   # set velocity as new grid spread (C lib)
   gridGen.SetSpread(uG_r)
+  # reinitialize forces on particles for interpolation
+  particlesGen.ZeroForces()
+  # copy data to ghost cells to enforce DP boundary conditions before interp
+  Ghostify(gridGen.grid, particlesGen.particles)
   # interpolate velocities on the particles (C lib)
-  vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+  Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
+  vP = particlesGen.GetForces()
+  print(vP[10]);
   if write:
     # write particles with interpolated vel to file (C lib)
     particlesGen.WriteParticles('particles.txt')
     # write grid velocities
     gridGen.WriteGrid('velocities.txt')
-  # free memory persisting b/w C and python (C lib)
-  fTransformer.Clean()
-  bTransformer.Clean()
-  gridGen.Clean()
-  particlesGen.Clean()
+  # reset the forces on the particles
+  particlesGen.SetForces(fP)
   time += timeit.default_timer() - t0
+
+# free memory persisting b/w C and python (C lib)
+fTransformer.Clean()
+bTransformer.Clean()
+gridGen.Clean()
+particlesGen.Clean()
 print(time / nits)

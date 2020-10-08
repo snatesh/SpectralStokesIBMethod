@@ -1,7 +1,7 @@
 #ifndef GRID_H
 #define GRID_H
 #include<ostream>
-#include<BoundaryConditions.h>
+#include"BoundaryConditions.h"
 
 /* Grid is an SoA describing the domain and its data
 
@@ -47,6 +47,8 @@ struct Grid
   void setZ(const double* zpts, const double* zwts);  
   void setPeriodicity(bool x, bool y, bool z);
   void setBCs(const BC* BCs);
+  /* zero the extended grid */
+  void zeroExtGrid();
   /* Create a valid triply periodic grid. The caller only provides these params */
   void makeTP(const double Lx, const double Ly, const double Lz, 
               const double hx, const double hy, const double hz,

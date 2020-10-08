@@ -1,4 +1,5 @@
 import ctypes
+import numpy as np
 libParticles = ctypes.CDLL('../lib/libparticles.so')
 
 class ParticlesGen(object):
@@ -8,7 +9,7 @@ class ParticlesGen(object):
   This class can be thought of as a generator and
   manager of the underlying C++ ParticlesList struct.
   
-  See "extern" in ParticlesList.h.
+  See ParticlesListWrapper.cpp.
   
   Attributes:
     nP (int) - number of particles, must be specified.
@@ -60,6 +61,9 @@ class ParticlesGen(object):
     libParticles.SetForces.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double),\
                                        ctypes.c_uint]
     libParticles.SetForces.restype = None
+
+    libParticles.ZeroForces.argtypes = [ctypes.c_void_p]
+    libParticles.ZeroForces.restype = None
 
     libParticles.GetForces.argtypes = [ctypes.c_void_p]
     libParticles.GetForces.restype = ctypes.POINTER(ctypes.c_double)   
@@ -117,13 +121,36 @@ class ParticlesGen(object):
   def SetForces(self, _fP):
     """
     The python wrapper for setting forces/other data on the particles. This
-    modifies the data pointed to by self.partiles.
+    modifies the data pointed to by self.particles.
 
     Parameters: _fP (doubles) - dof x nP fortran ordered array of data
     Side Effects:
       self.particles.fP is created or overwritten with data in _fP 
     """
-    libParticles.SetForces(self.particles, _fP, self.dof)   
+    libParticles.SetForces(self.particles, _fP.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), self.dof)   
+  
+  def ZeroForces(self):
+    """
+    The python wrapper for zeroing forces/other data on the particles. This
+    modifies the data pointed to by self.particles, and should be called
+    before interpolation.
+
+    Parameters: None
+    Side Effects:
+      self.particles.fP is overwritten with 0s, and the program exits if fP is null 
+    """
+    libParticles.ZeroForces(self.particles)   
+  
+  def GetForces(self):
+    """
+    The python wrapper for getting forces/other data on the particles.
+
+    Parameters: none
+    Side Effects: none
+    Returns:
+      self.particles.fP is returned and encapsulated in numpy array
+    """
+    return np.ctypeslib.as_array(libParticles.GetForces(self.particles), shape=(self.dof * self.nP, )) 
 
   def Setup(self, grid):
     """
