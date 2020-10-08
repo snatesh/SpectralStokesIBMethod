@@ -10,7 +10,7 @@ from Transform import *
 from Chebyshev import *
 from Solvers import DoublyPeriodicStokes_no_wall
 from Ghost import *
-nTrials = 1
+nTrials = 50
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
 dof = 3

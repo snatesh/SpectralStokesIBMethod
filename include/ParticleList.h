@@ -35,7 +35,7 @@ inline void hash_combine(std::size_t & seed, const T & v)
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-// custom hash function to uniquely identify tuple of (w, beta, c(w), Rh)
+// hash function to uniquely identify tuple of (w, beta, c(w), Rh)
 auto esparticle_hash = [](const ESParticle& v)
 { 
   size_t seed = 0;
@@ -52,6 +52,7 @@ typedef std::unordered_set<ESParticle, decltype(esparticle_hash)> ESParticleSet;
 
 // forward declare Grid
 struct Grid;
+
 struct ParticleList
 {
   double *xP, *fP;

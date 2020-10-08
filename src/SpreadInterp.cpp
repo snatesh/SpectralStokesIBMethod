@@ -9,43 +9,14 @@
 
 void spread(ParticleList& particles, Grid& grid)
 {
-  if (grid.unifZ)
-  {
-    spreadUnifZ(particles, grid);
-    // fold spread data from ghost region of extended grid into the interior
-    //fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-    //     particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
-  }
-  else
-  {
-    spreadNonUnifZ(particles, grid);
-    // fold spread data from ghost region of extended grid into the interior
-    //fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-    //     particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
-  } 
-
+  if (grid.unifZ) {spreadUnifZ(particles, grid);}
+  else {spreadNonUnifZ(particles, grid);} 
 }
 
 void interpolate(ParticleList& particles, Grid& grid)
 {
-  if (grid.unifZ)
-  {
-    // copy data from wrapped to unwrapped grid based on BCs
-    //copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-    //     particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
-    interpUnifZ(particles, grid);
-  }
-  else
-  {
-    // copy data from wrapped to unwrapped grid based on BCs
-    //copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
-    //     particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-    //     grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
-    interpNonUnifZ(particles, grid);
-  }
+  if (grid.unifZ) {interpUnifZ(particles, grid);}
+  else {interpNonUnifZ(particles, grid);}
 }
 
 void spreadUnifZ(ParticleList& particles, Grid& grid)

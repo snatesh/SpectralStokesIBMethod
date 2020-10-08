@@ -10,9 +10,25 @@
   #define MEM_ALIGN 16 
 #endif
 
-/* Main routines for spreading and interpolation, with
+/* Main routines and helpers for spreading and interpolation, with
    the appropriate routines dispatched based on
-   specified boundary conditions */
+   specified boundary conditions. 
+   NOTES: These routines do not reinitialize the state of the grid
+          or the particles. They also do not know about boundaries.
+          The caller is responsible for:
+          - initializing data on the extended 
+            grid (eg. using grid.zeroExtGrid()) before calls to spread().
+          - handling boundary conditions (eg. using DeGhostify()) after calls
+            to spread(). 
+          - initializing data on the particles (eg. using particles.zeroForces()) 
+            before calls to interpolate()
+          - handling boundary conditions (eg. using Ghostify()) before calls to
+            interpolate()
+   Side effects:
+          - the member grid.fG is overwritten with the spread data
+          - the member particle.fP is overwritten with interp data
+          - the member grid.fG_unwrap is modified during both spread and interp
+*/
 
 
 // forward declarations
