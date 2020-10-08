@@ -17,12 +17,17 @@ Nx = 128; Ny = 128; Nz = 29; dof = 3
 hx = 1.113649526996589; hy = 1.113649526996589;
 Lx = 2 * 71.273569727781705; Ly = 2 * 71.273569727781705; Lz = 16.890351204817986; 
 # number of particles
-#nP = 100000
-nP = 10
+nP = 100000
+#nP = 10
 # viscocity
 eta = 1/4/np.sqrt(np.pi)
 # boundary conditions specified for ends of each axis
-BCs = np.array([1,1,1,1,2,2], dtype = np.uintc)
+# 0 - mirror wall
+# 1 - inverse mirror wall
+# 2 - none 
+BCs = 2 * np.ones(dof * 6, dtype = np.uintc)
+# grid periodicity
+periodic_x = periodic_y = True; periodic_z = False;
 # chebyshev grid and weights for z
 zpts, zwts = clencurt(Nz, 0, Lz)
 # flag for whether to write output or not
@@ -79,7 +84,7 @@ nits = 10
 for j in range(0,nits):
   t0 = timeit.default_timer()
   # instantiate the python grid wrapper
-  gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, BCs, zpts, zwts)
+  gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
   # instantiate and define the grid with C lib call
   # this sets the GridGen.grid member to a pointer to a C++ Grid struct
   gridGen.Make()
@@ -116,7 +121,7 @@ for j in range(0,nits):
   uG_r = bTransformer.out_real
   uG_i = bTransformer.out_complex
   # set velocity as new grid spread (C lib)
-  gridGen.SetGridSpread(uG_r)
+  gridGen.SetSpread(uG_r)
   # interpolate velocities on the particles (C lib)
   vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
   if write:

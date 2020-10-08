@@ -3,14 +3,14 @@
 #include<fftw3.h>
 #include "Grid.h"
 #include "exceptions.h"
-#include "quadrature.h"
+#include "Quadrature.h"
 
 Grid::Grid() : fG(0), fG_unwrap(0), xG(0), yG(0), zG(0), firstn(0), 
                nextn(0), number(0), Nx(0), Ny(0), Nz(0), Lx(0), 
                Ly(0), Lz(0), hx(0), hy(0), hz(0), Nxeff(0), 
-               Nyeff(0), Nzeff(0), hxeff(0), hyeff(0), hzeff(0),
-               has_locator(false), xdescend(false), ydescend(false),
-               zdescend(false), dof(0), zG_wts(0), has_bc(false), unifZ(false)
+               Nyeff(0), Nzeff(0), has_locator(false), 
+               dof(0), BCs(0), zG_wts(0), has_periodicity(false), 
+               has_bc(false), unifZ(false)
 {}
 
 void Grid::setup()
@@ -22,24 +22,9 @@ void Grid::setup()
   }
   if (this->validState())
   {
-    if (hx == 0) 
-    {
-      xdescend = (xG[0] > xG[1] ? true : false);
-      this->configAxis(hxeff, Nxeff, xG, Nx, xdescend);
-    }
-    else {hxeff = hx; Nxeff = Nx;}
-    if (hy == 0) 
-    {
-      ydescend = (yG[0] > yG[1] ? true : false);
-      this->configAxis(hyeff, Nyeff, yG, Ny, ydescend);
-    }
-    else {hyeff = hy; Nyeff = Ny;}
-    if (hz == 0) 
-    {
-      zdescend = (zG[0] > zG[1] ? true : false);
-      this->configAxis(hzeff, Nzeff, zG, Nz, zdescend);
-    }
-    else {hzeff = hz; Nzeff = Nz; unifZ = true;}
+    // these will be added to when the grid is extended based on kernel widths
+    Nxeff = Nx; Nyeff = Ny; Nzeff = Nz;
+    if (hz > 0) unifZ = true;
   }
   else {exitErr("Grid is invalid.");}
 }
@@ -65,9 +50,16 @@ void Grid::seth(const double hx, const double hy, const double hz)
   this->hz = hz;
 }
 
+void Grid::setPeriodicity(bool x, bool y, bool z)
+{
+  this->isperiodic[0] = x; this->isperiodic[1] = y;
+  this->isperiodic[2] = z; this->has_periodicity = true;
+}
+
 void Grid::setBCs(const BC* _BCs)
 {
-  for (unsigned int i = 0; i < 6; ++i)
+  this->BCs = (BC*) malloc(dof * 6 * sizeof(BC));
+  for (unsigned int i = 0; i < 6 * dof; ++i)
   {
     this->BCs[i] = _BCs[i];
   }
@@ -95,7 +87,11 @@ void Grid::makeTP(const double Lx, const double Ly, const double Lz,
   this->hx = hx; this->hy = hy; this->hz = hz;
   this->dof = dof;
   this->fG = (double*) fftw_malloc(dof * Nx * Ny * Nz * sizeof(double));
-  for (unsigned int i = 0; i < 6; ++i) {this->BCs[i] = periodic;}
+  this->isperiodic[0] = this->isperiodic[1] = this->isperiodic[2] = true;
+  for (unsigned int i = 0; i < 6 * dof; ++i)
+  {
+    this->BCs[i] = none;
+  }
   this->has_bc = true;
   this->setup();
 }
@@ -112,8 +108,11 @@ void Grid::makeDP(const double Lx, const double Ly, const double Lz,
   this->zG = (double*) fftw_malloc(Nz * sizeof(double));
   this->zG_wts = (double*) fftw_malloc(Nz * sizeof(double)); 
   clencurt(zG, zG_wts, 0., Lz, Nz);
-  for (unsigned int i = 0; i < 4; ++i) {this->BCs[i] = periodic;}
-  this->BCs[4] = this->BCs[5] = no_slip_wall;
+  this->isperiodic[0] = this->isperiodic[1] = true; this->isperiodic[2] = false;
+  for (unsigned int i = 0; i < 6 * dof; ++i)
+  {
+    this->BCs[i] = none;
+  }
   this->has_bc = true;
   this->setup();
 }
@@ -133,31 +132,6 @@ void Grid::cleanup()
   else {exitErr("Could not clean up grid.");}
 }
 
-void Grid::configAxis(double& heff, unsigned int& Neff, const double* axis, 
-                      const unsigned int N, const bool descend)
-{
-  heff = 0; double dist;
-  if (descend)
-  {
-    for (unsigned int i = 0; i < N-1; ++i)
-    {
-      dist = axis[i] - axis[i + 1];
-      if (heff < dist) {heff = dist;}  
-    }
-    Neff = (unsigned int) ((axis[0] - axis[N-1]) / heff);
-    heff = (axis[0] - axis[N - 1]) / Neff;
-  }
-  else
-  {
-    for (unsigned int i = 0; i < N-1; ++i)
-    {
-      dist = axis[i + 1] - axis[i];
-      if (heff < dist) {heff = dist;}  
-    }
-    Neff = (unsigned int) ((axis[N - 1] - axis[0]) / heff);
-    heff = (axis[N-1] - axis[0]) / Neff;
-  }
-}
 
 void Grid::writeGrid(std::ostream& outputStream) const
 {
@@ -250,17 +224,11 @@ bool Grid::validState() const
       throw Exception("Detected uniform grids in x, y, but z grid is null",
                       __func__, __FILE__, __LINE__);
     }
-    // uniform x
-    if (hx > 0 && hy == 0 && hz == 0 && (not (yG && zG)))
+    // ensure hx, hy are provided
+    if (hx == 0 || hy == 0)
     {
-      throw Exception("Detected uniform grid in x, but at least one of \
-                       y and z grids is null.", __func__, __FILE__, __LINE__);
-    }
-    // non-uniform x y z 
-    if (hx == 0 && hy == 0 && hz == 0 && (not (xG && yG && zG)))
-    {
-      throw Exception("Detected non-uniform grids in x,y and z, but at least\
-                       one of the grids is null.", __func__, __FILE__, __LINE__);
+      throw Exception("Grid in x, y must be uniform, and grid spacing \
+                       hx, hy must be provided.", __func__, __FILE__, __LINE__);
     }
     // grid resolution 
     if (not (Nx && Ny && Nz))
@@ -278,22 +246,15 @@ bool Grid::validState() const
       throw Exception("Degrees of freedom (dof) for grid data must be specified.",
                       __func__, __FILE__, __LINE__);
     }
+    // periodicity specification
+    if (not has_periodicity)
+    {
+      throw Exception("Periodicity for each axis is unspecified", __func__, __FILE__, __LINE__);
+    }  
     // BC definition
     if (not has_bc)
     {
-      throw Exception("BCs for ends of each axis are unspecified", __func__, __FILE__, __LINE__);
-    }  
-    else
-    {
-      for (unsigned int i = 0; i < 6; i += 2)
-      {
-        if ((BCs[i] == periodic && BCs[i + 1] != periodic) || 
-            (BCs[i + 1] == periodic && BCs[i] != periodic))
-        {
-          throw Exception("Periodic BC must applied to both ends of axis", 
-                           __func__, __FILE__, __LINE__);
-        }
-      }
+      throw Exception("BCs for ends of each axis for each dof are unspecified", __func__, __FILE__, __LINE__);
     }
   }
   catch (Exception& e)

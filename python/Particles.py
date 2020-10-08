@@ -56,7 +56,14 @@ class ParticlesGen(object):
     
     libParticles.Setup.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
     libParticles.Setup.restype = None  
-    
+
+    libParticles.SetForces.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double),\
+                                       ctypes.c_uint]
+    libParticles.SetForces.restype = None
+
+    libParticles.GetForces.argtypes = [ctypes.c_void_p]
+    libParticles.GetForces.restype = ctypes.POINTER(ctypes.c_double)   
+ 
     libParticles.RandomConfig.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     libParticles.RandomConfig.restype = ctypes.c_void_p
 
@@ -107,6 +114,16 @@ class ParticlesGen(object):
                                           self.wfP.ctypes.data_as(ctypes.POINTER(ctypes.c_ushort)), \
                                           self.nP, self.dof)
 
+  def SetForces(self, _fP):
+    """
+    The python wrapper for setting forces/other data on the particles. This
+    modifies the data pointed to by self.partiles.
+
+    Parameters: _fP (doubles) - dof x nP fortran ordered array of data
+    Side Effects:
+      self.particles.fP is created or overwritten with data in _fP 
+    """
+    libParticles.SetForces(self.particles, _fP, self.dof)   
 
   def Setup(self, grid):
     """

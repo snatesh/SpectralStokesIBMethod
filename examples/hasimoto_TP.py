@@ -12,13 +12,19 @@ from Solvers import TriplyPeriodicStokes
 nTrials = 50
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
+# degrees of freedom
+dof = 3
+# grid periodicity
+periodic_x = periodic_y = periodic_z = True
 # boundary conditions specified for ends of each axis
-BCs = np.array([1,1,1,1,1,1], dtype = np.uintc)
+# 2 - no bc should be used for periodic grid
+BCs = 2 * np.ones(dof * 6, dtype = np.uintc)
+
 
 for iL in np.arange(0,Ls.size):
   for iTrial in np.arange(0,nTrials):
     # grid info 
-    Nx = Ny = Nz = int(Ls[iL]); dof = 3 
+    Nx = Ny = Nz = int(Ls[iL]) 
     hx = hy = hz = 0.5 
     Lx = Ly = Lz = hx * Nx 
     # number of particles
@@ -44,7 +50,7 @@ for iL in np.arange(0,Ls.size):
     radP = hx * np.array([cwfP[0]])
     
     # instantiate the python grid wrapper
-    gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, BCs)
+    gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs)
     # instantiate and define the grid with C lib call
     # this sets the GridGen.grid member to a pointer to a C++ Grid struct
     gridGen.Make()
@@ -78,7 +84,7 @@ for iL in np.arange(0,Ls.size):
     uG_r = bTransformer.out_real
     
     # set velocity as new grid spread (C lib)
-    gridGen.SetGridSpread(uG_r)
+    gridGen.SetSpread(uG_r)
     
     # interpolate velocities on the particles (C lib)
     vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)

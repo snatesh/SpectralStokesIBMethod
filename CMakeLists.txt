@@ -63,11 +63,11 @@ install(FILES ${spreadInterp_INC_FILES} DESTINATION include)
 
 # setting lib src files
 
-set(chebSRC src/quadrature.cpp)
-set(gridSRC src/Grid.cpp)
-set(particlesSRC src/ParticleList.cpp)
-set(spreadInterpSRC src/SpreadInterp.cpp)
-set(transformSRC src/Transform.cpp)
+set(chebSRC src/Quadrature.cpp)
+set(gridSRC src/Grid.cpp wrapper/GridWrapper.cpp)
+set(particlesSRC src/ParticleList.cpp wrapper/ParticleListWrapper.cpp)
+set(spreadInterpSRC src/SpreadInterp.cpp wrapper/SpreadInterpWrapper.cpp)
+set(transformSRC src/Transform.cpp wrapper/TransformWrapper.cpp)
 set(spreadInterpTPTestSRC testing/test_spread_TP.cpp)
 set(linSolveSRC src/LinearSolvers.cpp)
 set(spreadInterpDPTestSRC testing/test_spread_DP.cpp)

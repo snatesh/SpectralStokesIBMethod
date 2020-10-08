@@ -20,21 +20,9 @@
 struct Grid;
 struct ParticleList;
 
-
 // spread and interpolate
 void spread(ParticleList& particles, Grid& grid); 
 void interpolate(ParticleList& particles, Grid& grid);
-
-/* C wrapper for calling from Python. Any functions
-   defined here should also have their prototypes 
-   and wrappers defined in SpreadInterp.py */
-extern "C"
-{
-  double* GetGridSpread(Grid* grid);
-  double* getParticlesInterp(ParticleList* particles);
-  double* Spread(ParticleList* s, Grid* g) {spread(*s, *g); return GetGridSpread(g);}
-  double* Interpolate(ParticleList* s, Grid* g) {interpolate(*s, *g); return getParticlesInterp(s);}
-}
 
 // spread with z uniform or not
 void spreadUnifZ(ParticleList& particles, Grid& grid);
@@ -240,7 +228,7 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
                  const unsigned short wy, const unsigned short ext_up, 
                  const unsigned short ext_down, const unsigned int Nx, 
                  const unsigned int Ny, const unsigned int Nz, 
-                 const unsigned int dof, const BC* BCs)
+                 const unsigned int dof, bool* periodic, const BC* BCs)
 {
   unsigned int lend = wx, Nx_wrap = Nx - 2 * wx;
   unsigned int rbeg = Nx - lend;
@@ -249,7 +237,7 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
   unsigned int dend = ext_up, Nz_wrap = Nz - ext_up - ext_down; 
   unsigned int ubeg = Nz - ext_down;
   // periodic fold in x 
-  if (BCs[0] == periodic)
+  if (periodic[0])
   {
     #pragma omp parallel
     {
@@ -290,52 +278,66 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
       }
     }
   }
-  // no slip wall on x left
-  if (BCs[0] == no_slip_wall)
+  // handle BC for each end of x as specified
+  else
   {
-    // fold NEGATIVE of eulerian data in y-z plane in ghost region to adjacent interior region
-    // at left end of x axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    // get bc for left end of x 
+    const BC* bc_xl = &(BCs[0]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = 0; j < Ny; ++j)
-      {
-        for (unsigned int i = 0; i <= lend; ++i)
+      // we only do something if bc is not none
+      if (bc_xl[d] != none)
+      { 
+
+        if (bc_xl[d] == mirror) s = 1.0;
+        if (bc_xl[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in y-z plane in ghost region to adjacent interior region
+        // at left end of x axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k < Nz; ++k)
         {
-          unsigned int ipb = 2 * lend - i;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(ipb, j, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i <= lend; ++i)
+            {
+              unsigned int ipb = 2 * lend - i;
+              Fe[d + dof * at(ipb, j, k, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
           }
         }
-      } 
+      }
     }
-  }
-  // no slip wall on x right
-  if (BCs[1] == no_slip_wall)
-  {
-    // fold NEGATIVE of eulerian data in y-z plane in ghost region to adjacent interior region
-    // at right end of x axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    // get bc for right end of x
+    const BC* bc_xr = &(BCs[dof]); 
+    // no slip wall on x right
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = 0; j < Ny; ++j)
-      {
-        for (unsigned int i = rbeg - 1; i < Nx; ++i)
+      // we only do something if bc is not none
+      if (bc_xr[d] != none)
+      { 
+        if (bc_xr[d] == mirror) s = 1.0;
+        if (bc_xr[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in y-z plane in ghost region to adjacent interior region
+        // at right end of x axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k < Nz; ++k)
         {
-          unsigned int ipb = 2 * rbeg - i - 2;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(ipb, j, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = rbeg - 1; i < Nx; ++i)
+            {
+              unsigned int ipb = 2 * rbeg - i - 2;
+              Fe[d + dof * at(ipb, j, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
           }
         }
       }
     }
   }
   // periodic fold in y
-  if (BCs[2] == periodic)
+  if (periodic[1])
   {
     #pragma omp parallel
     {
@@ -376,52 +378,64 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
       }
     }
   }
-  // no slip wall on y bottom
-  if (BCs[2] == no_slip_wall)
+  // handle BC for each end of y as specified
+  else
   {
-    // fold NEGATIVE of eulerian data in x-z plane in ghost region to adjacent interior region
-    // at bottom end of y axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    // get bc for left end of y 
+    const BC* bc_yl = &(BCs[2 * dof]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = 0; j <= bend; ++j)
-      {
-        for (unsigned int i = 0; i < Nx; ++i)
+      // we only do something if bc is not none
+      if (bc_yl[d] != none)
+      { 
+        if (bc_yl[d] == mirror) s = 1.0;
+        if (bc_yl[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in x-z plane in ghost region to adjacent interior region
+        // at bottom end of y axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k < Nz; ++k)
         {
-          unsigned int jpb = 2 * bend - j;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(i, jpb, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+          for (unsigned int j = 0; j <= bend; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int jpb = 2 * bend - j;
+              Fe[d + dof * at(i, jpb, k, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
           }
         }
-      } 
+      }
     }
-  }
-  // no slip wall on y top
-  if (BCs[3] == no_slip_wall)
-  {
-    // fold NEGATIVE of eulerian data in x-z plane in ghost region to adjacent interior region
-    // at top end of y axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = 0; k < Nz; ++k)
+    // get bc for right end of y 
+    const BC* bc_yr = &(BCs[3 * dof]);
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = tbeg - 1; j < Ny; ++j)
-      {
-        for (unsigned int i = 0; i < Nx; ++i)
+      // we only do something if bc is not none
+      if (bc_yr[d] != none)
+      { 
+        if (bc_yr[d] == mirror) s = 1.0;
+        if (bc_yr[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in x-z plane in ghost region to adjacent interior region
+        // at top end of y axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k < Nz; ++k)
         {
-          unsigned int jpb = 2 * tbeg - i - 2;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(i, jpb, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+          for (unsigned int j = tbeg - 1; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int jpb = 2 * tbeg - i - 2;
+              Fe[d + dof * at(i, jpb, k, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
           }
         }
       }
     }
   }
   // periodic fold in z
-  if (BCs[4] == periodic)
+  if (periodic[2])
   {
     #pragma omp parallel
     {
@@ -463,50 +477,62 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
       }
     }
   }
-  // no slip wall at z down
-  if (BCs[4] == no_slip_wall)
+  // handle BC for each end of z as specified
+  else
   {
-    // fold NEGATIVE of eulerian data in x-y plane in ghost region to adjacent interior region
-    // at lower end of z axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = 0; k <= dend; ++k)
+    // get bc for left end of z 
+    const BC* bc_zl = &(BCs[4 * dof]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = 0; j < Ny; ++j)
-      {
-        for (unsigned int i = 0; i < Nx; ++i)
+      // we only do something if bc is not none
+      if (bc_zl[d] != none)
+      { 
+        if (bc_zl[d] == mirror) s = 1.0;
+        if (bc_zl[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in x-y plane in ghost region to adjacent interior region
+        // at lower end of z axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k <= dend; ++k)
         {
-          unsigned int kpb = 2 * dend - k;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(i, j, kpb, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
-          }
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int kpb = 2 * dend - k;
+              Fe[d + dof * at(i, j, kpb, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
+          } 
         }
-      } 
+      }
     }
-  }
-  // no slip wall at z up
-  if (BCs[5] == no_slip_wall)
-  {
-    // fold NEGATIVE of eulerian data in x-y plane in ghost region to adjacent interior region
-    // at upper end of z axis
-    #pragma omp parallel for collapse(3)
-    for (unsigned int k = ubeg - 1; k < Nz; ++k)
+    // get bc for right end of z
+    const BC* bc_zr = &(BCs[5 * dof]);  
+    for (unsigned int d = 0; d < dof; ++d)
     {
-      for (unsigned int j = 0; j < Ny; ++j)
-      {
-        for (unsigned int i = 0; i < Nx; ++i)
+      // we only do something if bc is not none
+      if (bc_zr[d] != none)
+      { 
+        if (bc_zr[d] == mirror) s = 1.0;
+        if (bc_zr[d] == mirror_inv) s = -1.0;
+        // fold eulerian data in x-y plane in ghost region to adjacent interior region
+        // at upper end of z axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = ubeg - 1; k < Nz; ++k)
         {
-          unsigned int kpb = 2 * ubeg - k - 2;
-          #pragma omp simd aligned(Fe: MEM_ALIGN)
-          for (unsigned int d = 0; d < dof; ++d)
-          { 
-            Fe[d + dof * at(i, j, kpb, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int kpb = 2 * ubeg - k - 2;
+              Fe[d + dof * at(i, j, kpb, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+            }
           }
         }
       }
     }
-  } 
+  }
   // copy data on extended grid to wrapped grid
   #pragma omp parallel for collapse(3)
   for (unsigned int k = dend; k < ubeg; ++k) 
@@ -532,7 +558,7 @@ inline void copy(double* Fe, const double* Fe_wrap, const unsigned short wx,
                  const unsigned short wy, const unsigned short ext_up,
                  const unsigned short ext_down, const unsigned int Nx, 
                  const unsigned int Ny, const unsigned int Nz, 
-                 const unsigned int dof, const BC* BCs)
+                 const unsigned int dof, bool* periodic, const BC* BCs)
 {
   unsigned int lend = wx, Nx_wrap = Nx - 2 * wx;
   unsigned int rbeg = Nx - lend;
@@ -557,7 +583,7 @@ inline void copy(double* Fe, const double* Fe_wrap, const unsigned short wx,
     }
   }
   // periodic copy in x
-  if (BCs[0] == periodic)
+  if (periodic[0])
   {
     #pragma omp parallel
     {  
@@ -598,8 +624,65 @@ inline void copy(double* Fe, const double* Fe_wrap, const unsigned short wx,
       }
     }
   }
+  else
+  {
+    // get bc for left end of x 
+    const BC* bc_xl = &(BCs[0]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_xl[d] != none)
+      { 
+
+        if (bc_xl[d] == mirror) s = 1.0;
+        if (bc_xl[d] == mirror_inv) s = -1.0;
+        // copy eulerian data in y-z plane in interior region to 
+        // adjacent ghost region at left end of x axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = dend; k < ubeg; ++k)
+        {
+          for (unsigned int j = bend; j < tbeg; ++j)
+          {
+            for (unsigned int i = 0; i < lend; ++i)
+            {
+              unsigned int ipb = 2 * lend - i;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(ipb, j, k, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+    // get bc for right end of x
+    const BC* bc_xr = &(BCs[dof]); 
+    // no slip wall on x right
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_xr[d] != none)
+      { 
+        if (bc_xr[d] == mirror) s = 1.0;
+        if (bc_xr[d] == mirror_inv) s = -1.0;
+        // copy eulerian data in y-z plane in interior region to 
+        // adjacent ghost region at right end of x axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = dend; k < ubeg; ++k)
+        {
+          for (unsigned int j = bend; j < tbeg; ++j)
+          {
+            for (unsigned int i = rbeg; i < Nx; ++i)
+            {
+              unsigned int ipb = Nx_wrap - 2 - i + rbeg;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(ipb, j, k, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+  }
   // periodic copy in y
-  if (BCs[2] == periodic)
+  if (periodic[1])
   {
     #pragma omp parallel
     { 
@@ -640,8 +723,63 @@ inline void copy(double* Fe, const double* Fe_wrap, const unsigned short wx,
       }
     }
   }
+  else
+  {
+    // get bc for left end of y 
+    const BC* bc_yl = &(BCs[2 * dof]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_yl[d] != none)
+      { 
+        if (bc_yl[d] == mirror) s = 1.0;
+        if (bc_yl[d] == mirror_inv) s = -1.0;
+        // copy eulerian data in x-z plane in interior region to 
+        // adjacent ghost region at bottom end of y axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = dend; k < ubeg; ++k)
+        {
+          for (unsigned int j = 0; j < bend; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int jpb = 2 * bend - j;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+    // get bc for right end of y 
+    const BC* bc_yr = &(BCs[3 * dof]);
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_yr[d] != none)
+      { 
+        if (bc_yr[d] == mirror) s = 1.0;
+        if (bc_yr[d] == mirror_inv) s = -1.0;
+        // copy of eulerian data in x-z plane in interior region to 
+        // adjacent ghost region at top end of y axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = dend; k < ubeg; ++k)
+        {
+          for (unsigned int j = tbeg; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int jpb = Ny_wrap - 2 - j + tbeg;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(i, jpb, k, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+  }
   // periodic copy in z
-  if (BCs[4] == periodic)
+  if (periodic[2])
   {
     #pragma omp parallel
     {
@@ -676,6 +814,61 @@ inline void copy(double* Fe, const double* Fe_wrap, const unsigned short wx,
             for (unsigned int d = 0; d < dof; ++d)
             {
               Fe[d + dof * at(i, j, k, Nx, Ny)] = Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    // get bc for left end of z 
+    const BC* bc_zl = &(BCs[4 * dof]);
+    // multiplier to enforce bc
+    double s;
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_zl[d] != none)
+      { 
+        if (bc_zl[d] == mirror) s = 1.0;
+        if (bc_zl[d] == mirror_inv) s = -1.0;
+        // copy eulerian data in x-y plane in interior region to 
+        // adjacent ghost region at down end of z axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = 0; k < dend; ++k)
+        {
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int kpb = 2 * dend - k;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
+            }
+          }
+        }
+      }
+    }
+    // get bc for right end of z
+    const BC* bc_zr = &(BCs[5 * dof]);  
+    for (unsigned int d = 0; d < dof; ++d)
+    {
+      // we only do something if bc is not none
+      if (bc_zr[d] != none)
+      { 
+        if (bc_zr[d] == mirror) s = 1.0;
+        if (bc_zr[d] == mirror_inv) s = -1.0;
+        // copy eulerian data in x-y plane in interior region to 
+        // adjacent ghost region at up end of z axis according to mirror or mirror_inv
+        #pragma omp parallel for collapse(3)
+        for (unsigned int k = ubeg; k < Nz; ++k)
+        {
+          for (unsigned int j = 0; j < Ny; ++j)
+          {
+            for (unsigned int i = 0; i < Nx; ++i)
+            {
+              unsigned int kpb = 2 * ubeg - k - 2;
+              Fe[d + dof * at(i, j, k, Nx, Ny)] = s * Fe[d + dof * at(i, j, kpb, Nx, Ny)]; 
             }
           }
         }

@@ -1,4 +1,4 @@
-#include<quadrature.h>
+#include<Quadrature.h>
 #include<math.h>
 #include<omp.h>
 

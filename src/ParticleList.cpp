@@ -8,7 +8,7 @@
 #include<fftw3.h>
 #include "ParticleList.h"
 #include "Grid.h"
-#include "quadrature.h"
+#include "Quadrature.h"
 #include "exceptions.h"
 
 
@@ -49,6 +49,7 @@ ParticleList::ParticleList(const double* _xP, const double* _fP, const double* _
   wfxP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
   wfyP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
   wfzP = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
+  #pragma omp parallel for
   for (unsigned int i = 0; i < nP; ++i)
   {
     xP[3 * i] = _xP[3 * i];
@@ -64,6 +65,18 @@ ParticleList::ParticleList(const double* _xP, const double* _fP, const double* _
     }
   }
   this->setup();
+}
+
+void ParticleList::setForces(const double* _fP, unsigned int _dof)
+{
+  if (!dof) this->dof = _dof;
+  else if (this->dof != _dof) exitErr("DOF does not match current.");
+  if(!this->fP)
+  {
+    this->fP = (double*) fftw_malloc(nP * dof * sizeof(double));
+  }
+  #pragma omp parallel for
+  for (unsigned int i = 0; i < dof * nP; ++i) this->fP[i] = _fP[i]; 
 }
 
 void ParticleList::setup()
@@ -171,9 +184,9 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
   #pragma omp parallel for
   for (unsigned int i = 0; i < nP; ++i)
   {
-    wfxP[i] = std::round(2 * alphafP[i] / grid.hxeff);
-    wfyP[i] = std::round(2 * alphafP[i] / grid.hyeff);
-    wfzP[i] = std::round(2 * alphafP[i] / grid.hzeff);
+    wfxP[i] = std::round(2 * alphafP[i] / grid.hx);
+    wfyP[i] = std::round(2 * alphafP[i] / grid.hy);
+    wfzP[i] = std::round(2 * alphafP[i] / grid.hz);
   }
   wfxP_max = *std::max_element(wfxP, wfxP + nP); grid.Nxeff += 2 * wfxP_max;
   wfyP_max = *std::max_element(wfyP, wfyP + nP); grid.Nyeff += 2 * wfyP_max;
@@ -205,16 +218,16 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       const unsigned short wz = wfzP[i];
       const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
       const int evenz = -1 * (wz % 2) + 1;
-      xclose[i] = (int) (xP[3 * i] / grid.hxeff);
-      yclose[i] = (int) (xP[1 + 3 * i] / grid.hyeff);
-      zclose[i] = (int) (xP[2 + 3 * i] / grid.hzeff);
-      xclose[i] += ((wx % 2) && (xP[3 * i] / grid.hxeff - xclose[i] > 1.0 / 2.0) ? 1 : 0);
-      yclose[i] += ((wy % 2) && (xP[1 + 3 * i] / grid.hyeff - yclose[i] > 1.0 / 2.0) ? 1 : 0);
-      zclose[i] += ((wz % 2) && (xP[2 + 3 * i] / grid.hzeff - zclose[i] > 1.0 / 2.0) ? 1 : 0);
+      xclose[i] = (int) (xP[3 * i] / grid.hx);
+      yclose[i] = (int) (xP[1 + 3 * i] / grid.hy);
+      zclose[i] = (int) (xP[2 + 3 * i] / grid.hz);
+      xclose[i] += ((wx % 2) && (xP[3 * i] / grid.hx - xclose[i] > 1.0 / 2.0) ? 1 : 0);
+      yclose[i] += ((wy % 2) && (xP[1 + 3 * i] / grid.hy - yclose[i] > 1.0 / 2.0) ? 1 : 0);
+      zclose[i] += ((wz % 2) && (xP[2 + 3 * i] / grid.hz - zclose[i] > 1.0 / 2.0) ? 1 : 0);
       for (unsigned int j = 0; j < wx; ++j)
       {
         // TODO : something wrong with weird grid spacing like 0.3 or 0.7
-        xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hxeff - xP[3 * i];
+        xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
         if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
           xunwrap[j + i * wfxP_max] = alphafP[i];
@@ -227,7 +240,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       } 
       for (unsigned int j = 0; j < wy; ++j)
       {
-        yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hyeff - xP[1 + 3 * i];
+        yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hy - xP[1 + 3 * i];
         if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
           yunwrap[j + i * wfyP_max] = alphafP[i];
@@ -240,7 +253,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       } 
       for (unsigned int j = 0; j < wz; ++j)
       {
-        zunwrap[j + i * wfzP_max] = ((double) zclose[i] + j - wz / 2 + evenz) * grid.hzeff - xP[2 + 3 * i];
+        zunwrap[j + i * wfzP_max] = ((double) zclose[i] + j - wz / 2 + evenz) * grid.hz - xP[2 + 3 * i];
         if (fabs(pow(zunwrap[j + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
           zunwrap[j + i * wfzP_max] = alphafP[i];
@@ -287,8 +300,8 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
   #pragma omp parallel for
   for (unsigned int i = 0; i < nP; ++i)
   {
-    wfxP[i] = std::round(2 * alphafP[i] / grid.hxeff);
-    wfyP[i] = std::round(2 * alphafP[i] / grid.hyeff);
+    wfxP[i] = std::round(2 * alphafP[i] / grid.hx);
+    wfyP[i] = std::round(2 * alphafP[i] / grid.hy);
   }
   wfxP_max = *std::max_element(wfxP, wfxP + nP); grid.Nxeff += 2 * wfxP_max;
   wfyP_max = *std::max_element(wfyP, wfyP + nP); grid.Nyeff += 2 * wfyP_max;
@@ -299,92 +312,50 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
   double *zG_ext, *zG_ext_wts;
   unsigned short* indl = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
   unsigned short* indr = (unsigned short*) fftw_malloc(nP * sizeof(unsigned short));
-  if (grid.zdescend)
+ 
+  unsigned int i = 1;
+  while (grid.zG[0] - grid.zG[i] <= alphafP_max) {ext_up += 1; i += 1;} 
+  i = grid.Nz - 2;
+  while (grid.zG[i] - grid.zG[grid.Nz - 1] <= alphafP_max) {ext_down += 1; i -= 1;}
+  grid.Nzeff += ext_up + ext_down;
+  zG_ext = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
+  zG_ext_wts = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
+  for (unsigned int i = ext_up; i < grid.Nzeff - ext_down; ++i)
   {
-    unsigned int i = 1;
-    while (grid.zG[0] - grid.zG[i] <= alphafP_max) {ext_up += 1; i += 1;} 
-    i = grid.Nz - 2;
-    while (grid.zG[i] - grid.zG[grid.Nz - 1] <= alphafP_max) {ext_down += 1; i -= 1;}
-    grid.Nzeff = grid.Nz + ext_up + ext_down;
-    zG_ext = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
-    zG_ext_wts = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
-    for (unsigned int i = ext_up; i < grid.Nzeff - ext_down; ++i)
-    {
-      zG_ext[i] = grid.zG[i - ext_up];
-      zG_ext_wts[i] = grid.zG_wts[i - ext_up];
-    } 
-    unsigned int j = 0;
-    for (unsigned int i = ext_up; i > 0; --i) 
-    {
-      zG_ext[j] = 2.0 * grid.zG[0] - grid.zG[i]; 
-      zG_ext_wts[j] = grid.zG_wts[i];
-      j += 1;
-    }
-    j = grid.Nzeff - ext_down;;
-    for (unsigned int i = grid.Nz - 2; i > grid.Nz - 2 - ext_down; --i)
-    { 
-      zG_ext[j] = -1.0 * grid.zG[i]; 
-      zG_ext_wts[j] = grid.zG_wts[i]; 
-      j += 1; 
-    } 
-    // find wz for each particle
-    for (unsigned int i = 0; i < nP; ++i)
-    {
-      
-      // find index of z grid pt w/i alpha below 
-      auto high = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
-                                   xP[2 + 3 * i] - alphafP[i], std::greater<double>());
-      auto low = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
-                                  xP[2 + 3 * i] + alphafP[i], std::greater<double>());
-      indl[i] = low - &zG_ext[0];  
-      indr[i] = high - &zG_ext[0];
-      if (indr[i] == grid.Nzeff) {indr[i] -= 1;}
-      else if (xP[2 + 3 * i] - alphafP[i] > zG_ext[indr[i]]) {indr[i] -= 1;}
-      wfzP[i] = indr[i] - indl[i] + 1; 
-      //std::cout << zG_ext[indl[i]]- zG_ext[indr[i]] << " " << 2 * alphafP[i] << std::endl; 
-    }
-  }
-  else
+    zG_ext[i] = grid.zG[i - ext_up];
+    zG_ext_wts[i] = grid.zG_wts[i - ext_up];
+  } 
+  unsigned int j = 0;
+  for (unsigned int i = ext_up; i > 0; --i) 
   {
-    unsigned int i = 1;
-    while (grid.zG[i] - grid.zG[0] <= alphafP_max) {ext_down += 1; i += 1;} 
-    i = grid.Nz - 2;
-    while (grid.zG[grid.Nz - 1] - grid.zG[i] <= alphafP_max) {ext_up += 1; i -= 1;}
-    grid.Nzeff = grid.Nz + ext_up + ext_down;
-    zG_ext = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
-    zG_ext_wts = (double*) fftw_malloc(grid.Nzeff * sizeof(double));
-    for (unsigned int i = ext_down; i < grid.Nzeff - ext_up; ++i)
-    {
-      zG_ext[i] = grid.zG[i - ext_down];
-      zG_ext_wts[i] = grid.zG_wts[i - ext_down];
-    }
-    unsigned int j = 0;
-    for (unsigned int i = ext_down; i > 0; --i) 
-    {
-      zG_ext[j] = -1.0 * grid.zG[i]; 
-      zG_ext_wts[j] = grid.zG_wts[i];
-      j += 1;
-    }
-    j = grid.Nzeff - ext_up;
-    for (unsigned int i = grid.Nz - 2; i > grid.Nz - 2 - ext_up; --i)
-    { 
-      zG_ext[j] = 2.0 * grid.zG[grid.Nz-1] - grid.zG[i]; 
-      zG_ext_wts[j] = grid.zG_wts[i];
-      j += 1; 
-    }
-    // find wz for each particle
-    for (unsigned int i = 0; i < nP; ++i)
-    {
-      // find index of z grid pt w/i alpha below and above 
-      auto low = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
-                                  xP[2 + 3 * i] - alphafP[i], std::less<double>());
-      auto high = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
-                                  xP[2 + 3 * i] + alphafP[i], std::less<double>());
-      indl[i] = low - &zG_ext[0];  
-      indr[i] = high - &zG_ext[0];
-      wfzP[i] = indr[i] - indl[i] + 1; 
-    }
+    zG_ext[j] = 2.0 * grid.zG[0] - grid.zG[i]; 
+    zG_ext_wts[j] = grid.zG_wts[i];
+    j += 1;
   }
+  j = grid.Nzeff - ext_down;;
+  for (unsigned int i = grid.Nz - 2; i > grid.Nz - 2 - ext_down; --i)
+  { 
+    zG_ext[j] = -1.0 * grid.zG[i]; 
+    zG_ext_wts[j] = grid.zG_wts[i]; 
+    j += 1; 
+  } 
+  // find wz for each particle
+  for (unsigned int i = 0; i < nP; ++i)
+  {
+    
+    // find index of z grid pt w/i alpha below 
+    auto high = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
+                                 xP[2 + 3 * i] - alphafP[i], std::greater<double>());
+    auto low = std::lower_bound(&zG_ext[0], &zG_ext[0] + grid.Nzeff, \
+                                xP[2 + 3 * i] + alphafP[i], std::greater<double>());
+    indl[i] = low - &zG_ext[0];  
+    indr[i] = high - &zG_ext[0];
+    if (indr[i] == grid.Nzeff) {indr[i] -= 1;}
+    else if (xP[2 + 3 * i] - alphafP[i] > zG_ext[indr[i]]) {indr[i] -= 1;}
+    wfzP[i] = indr[i] - indl[i] + 1; 
+    //std::cout << zG_ext[indl[i]]- zG_ext[indr[i]] << " " << 2 * alphafP[i] << std::endl; 
+  }
+  
   std::cout << "ext_up: " << ext_up << ", ext_down: " << ext_down << std::endl; 
   wfzP_max = *std::max_element(wfzP, wfzP + nP); 
   unsigned int N2 = grid.Nxeff * grid.Nyeff, N3 = N2 * grid.Nzeff;
@@ -410,13 +381,13 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       const unsigned short wy = wfyP[i];
       const unsigned short wz = wfzP[i];
       const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
-      xclose[i] = (int) (xP[3 * i] / grid.hxeff);
-      yclose[i] = (int) (xP[1 + 3 * i] / grid.hyeff);
-      xclose[i] += ((wx % 2) && (xP[3 * i] / grid.hxeff - xclose[i] > 1.0 / 2.0) ? 1 : 0);
-      yclose[i] += ((wy % 2) && (xP[1 + 3 * i] / grid.hyeff - yclose[i] > 1.0 / 2.0) ? 1 : 0);
+      xclose[i] = (int) (xP[3 * i] / grid.hx);
+      yclose[i] = (int) (xP[1 + 3 * i] / grid.hy);
+      xclose[i] += ((wx % 2) && (xP[3 * i] / grid.hx - xclose[i] > 1.0 / 2.0) ? 1 : 0);
+      yclose[i] += ((wy % 2) && (xP[1 + 3 * i] / grid.hy - yclose[i] > 1.0 / 2.0) ? 1 : 0);
       for (unsigned int j = 0; j < wx; ++j)
       {
-        xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hxeff - xP[3 * i];
+        xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
         if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
           xunwrap[j + i * wfxP_max] = alphafP[i];
@@ -429,7 +400,7 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       } 
       for (unsigned int j = 0; j < wy; ++j)
       {
-        yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hyeff - xP[1 + 3 * i];
+        yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hy - xP[1 + 3 * i];
         if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
           yunwrap[j + i * wfyP_max] = alphafP[i];
@@ -448,7 +419,7 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
         {
           zunwrap[k + i * wfzP_max] = alphafP[i];
         }
-        pt_wts[k + i * wfzP_max] = grid.hxeff * grid.hyeff * zG_ext_wts[j];
+        pt_wts[k + i * wfzP_max] = grid.hx * grid.hy * zG_ext_wts[j];
         k += 1;
         // initialize buffer region if needed
         if (k == wz - 1 && wz < wfzP_max)

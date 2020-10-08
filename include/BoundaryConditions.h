@@ -6,6 +6,6 @@
    each axis. Note, if periodic is applied
    at the end of one axis, it must be applied
    at the other end as well. */
-enum BC {open, periodic, no_slip_wall};
+enum BC {mirror, mirror_inv, none};
 
 #endif

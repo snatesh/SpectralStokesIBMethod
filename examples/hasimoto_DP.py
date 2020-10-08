@@ -13,8 +13,14 @@ from Solvers import DoublyPeriodicStokes_no_wall
 nTrials = 1
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
+dof = 3
 # boundary conditions specified for ends of each axis
-BCs = np.array([1,1,1,1,0,0], dtype = np.uintc)
+# 0 - mirror wall
+# 1 - inverse mirror wall
+# 2 - none 
+BCs = 2 * np.ones(dof * 6, dtype = np.uintc)
+# grid periodicity
+periodic_x = periodic_y = True; periodic_z = False;
 # grid spacing in x,y
 hx = hy = 0.5
 # chebyshev grid and weights for z
@@ -31,7 +37,7 @@ k0 = 0;
 for iL in range(0,Ls.size):
   for iTrial in range(0,nTrials):
     # grid info 
-    Nx = Ny = int(Ls[iL]); dof = 3 
+    Nx = Ny = int(Ls[iL]) 
     Lx = Ly = hx * Nx 
     # number of particles
     nP = 1
@@ -56,7 +62,7 @@ for iL in range(0,Ls.size):
     radP = hx * np.array([cwfP[0]])
     
     # instantiate the python grid wrapper
-    gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, BCs, zpts, zwts)
+    gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
     # instantiate and define the grid with C lib call
     # this sets the GridGen.grid member to a pointer to a C++ Grid struct
     gridGen.Make()
@@ -89,7 +95,7 @@ for iL in range(0,Ls.size):
     uG_r = bTransformer.out_real
     
     # set velocity as new grid spread (C lib)
-    gridGen.SetGridSpread(uG_r)
+    gridGen.SetSpread(uG_r)
     
     # interpolate velocities on the particles (C lib)
     vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)

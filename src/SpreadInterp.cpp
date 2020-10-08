@@ -14,7 +14,7 @@ void spread(ParticleList& particles, Grid& grid)
     // fold spread data from ghost region of extended grid into the interior
     fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
          particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.BCs);
+         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
   }
   else
   {
@@ -22,7 +22,7 @@ void spread(ParticleList& particles, Grid& grid)
     // fold spread data from ghost region of extended grid into the interior
     fold(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
          particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.BCs);
+         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
   } 
 
 }
@@ -43,7 +43,7 @@ void interpolate(ParticleList& particles, Grid& grid)
     // copy data from wrapped to unwrapped grid based on BCs
     copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
          particles.wfzP_max, particles.wfzP_max, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.BCs);
+         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
     interpUnifZ(particles, grid);
   }
   else
@@ -51,7 +51,7 @@ void interpolate(ParticleList& particles, Grid& grid)
     // copy data from wrapped to unwrapped grid based on BCs
     copy(grid.fG_unwrap, grid.fG, particles.wfxP_max, particles.wfyP_max, 
          particles.ext_up, particles.ext_down, grid.Nxeff, grid.Nyeff, 
-         grid.Nzeff, grid.dof, grid.BCs);
+         grid.Nzeff, grid.dof, grid.isperiodic, grid.BCs);
     interpNonUnifZ(particles, grid);
   }
 }
@@ -61,9 +61,9 @@ void spreadUnifZ(ParticleList& particles, Grid& grid)
   // loop over unique alphas
   for (const double& alphaf : particles.unique_alphafP)
   {
-    const unsigned short wx = std::round(2 * alphaf / grid.hxeff);
-    const unsigned short wy = std::round(2 * alphaf / grid.hyeff);
-    const unsigned short wz = std::round(2 * alphaf / grid.hzeff);
+    const unsigned short wx = std::round(2 * alphaf / grid.hx);
+    const unsigned short wy = std::round(2 * alphaf / grid.hy);
+    const unsigned short wz = std::round(2 * alphaf / grid.hz);
     //std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << std::endl;
     const unsigned short w2 = wx * wy;
     const unsigned int kersz = w2 * wz; 
@@ -178,14 +178,14 @@ void interpUnifZ(ParticleList& particles, Grid& grid)
   // loop over unique alphas
   for (const double& alphaf : particles.unique_alphafP)
   {
-    const unsigned short wx = std::round(2 * alphaf / grid.hxeff);
-    const unsigned short wy = std::round(2 * alphaf / grid.hyeff);
-    const unsigned short wz = std::round(2 * alphaf / grid.hzeff);
+    const unsigned short wx = std::round(2 * alphaf / grid.hx);
+    const unsigned short wy = std::round(2 * alphaf / grid.hy);
+    const unsigned short wz = std::round(2 * alphaf / grid.hz);
     const unsigned short w2 = wx * wy;
     const unsigned int kersz = w2 * wz; 
     const unsigned int subsz = w2 * grid.Nzeff;
     const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
-    const double weight = grid.hxeff * grid.hyeff * grid.hzeff;
+    const double weight = grid.hx * grid.hy * grid.hz;
     //std::cout << std::setprecision(16) << wx << " " << wy  << " " << wz << " " << weight << std::endl;
     // loop over w^2 groups of columns
     for (unsigned int izero = 0; izero < wx; ++izero)
@@ -295,8 +295,8 @@ void spreadNonUnifZ(ParticleList& particles, Grid& grid)
   // loop over unique alphas
   for (const double& alphaf : particles.unique_alphafP)
   {
-    const unsigned short wx = std::round(2 * alphaf / grid.hxeff);
-    const unsigned short wy = std::round(2 * alphaf / grid.hyeff);
+    const unsigned short wx = std::round(2 * alphaf / grid.hx);
+    const unsigned short wy = std::round(2 * alphaf / grid.hy);
     std::cout << std::setprecision(16) << wx << " " << wy << std::endl;
     const unsigned short w2 = wx * wy;
     const unsigned int subsz = w2 * grid.Nzeff;
@@ -415,8 +415,8 @@ void interpNonUnifZ(ParticleList& particles, Grid& grid)
   // loop over unique alphas
   for (const double& alphaf : particles.unique_alphafP)
   {
-    const unsigned short wx = std::round(2 * alphaf / grid.hxeff);
-    const unsigned short wy = std::round(2 * alphaf / grid.hyeff);
+    const unsigned short wx = std::round(2 * alphaf / grid.hx);
+    const unsigned short wy = std::round(2 * alphaf / grid.hy);
     std::cout << std::setprecision(16) << wx << " " << wy << std::endl;
     const unsigned short w2 = wx * wy;
     const unsigned int subsz = w2 * grid.Nzeff;

@@ -63,7 +63,7 @@ struct ParticleList
   unsigned int nP, dof, ext_down, ext_up;
   ESParticleSet unique_monopoles;
   std::unordered_set<double> unique_alphafP;
-  bool normalized;
+  bool normalized; 
   
   /* empty/null ctor */
   ParticleList();
@@ -81,6 +81,8 @@ struct ParticleList
   void normalizeKernels();
   /* find unique ES kernels */
   void findUniqueKernels();
+  /* set data on particles */
+  void setForces(const double* _fP, unsigned int dof); 
   /* Locate the particles in terms of the columns of the grid,
      dispatching either locateOnGridUnifZ or locateOnGridNonUnivZ
      based on grid.unifZ boolean
@@ -99,7 +101,7 @@ struct ParticleList
       - MOST IMPORTANTLY, grid.firstn and grid.nextn are computed. These
         partition the particles on the grid into columns. 
         That is, 
-          for column ind, grid.firstn[ind] = i1 is the index of the first particle in the column
+          for column j, grid.firstn[j] = i1 is the index of the first particle in the column
                           grid.nextn[i1] = i2 is the index of the next particle in the column, and so on.
   */
   void locateOnGrid(Grid& grid);
@@ -113,51 +115,5 @@ struct ParticleList
   /* randomly initialize particles on grid, used for testing */
   void randInit(Grid& grid, const unsigned int _nP);
 };
-
-
-/* C wrapper for calling from Python. Any functions
-   defined here should also have their prototypes 
-   and wrappers defined in ParticleList.py */
-extern "C"
-{
-  /* make a ParticleList from external data */
-  ParticleList* MakeParticles(const double* xP, const double* fP, const double* radP, 
-                           const double* betafP, const double* cwfP, const unsigned short* wfP, 
-                           const unsigned int nP, const unsigned int dof)
-  {
-    ParticleList* particles = new ParticleList(xP, fP, radP, betafP, cwfP, wfP, nP, dof);
-    return particles;
-  }
-
-  /* setup the particles on the grid (builds grid locators)*/
-  void Setup(ParticleList* particles, Grid* grid)
-  {
-    particles->setup(*grid);  
-  }
-
-  /* create random configuration given the grid and number of particles 
-     NOTE: this calls Setup() internaly */
-  ParticleList* RandomConfig(Grid* grid, const unsigned int nP)
-  {
-    ParticleList* particles = new ParticleList();
-    particles->randInit(*grid, nP);
-    return particles;
-  } 
- 
-  double* getPoints(ParticleList* particles) {return particles->xP;}
-  double* getForces(ParticleList* particles) {return particles->fP;}
-  double* getParticlesInterp(ParticleList* particles) {return particles->fP;}
-  double* getRadii(ParticleList* particles) {return particles->radP;}
-  double* getBetaf(ParticleList* particles) {return particles->betafP;}
-  double* getNormf(ParticleList* particles) {return particles->normfP;}
-  unsigned short* getWf(ParticleList* particles) {return particles->wfP;}
-  unsigned short* getWfx(ParticleList* particles) {return particles->wfxP;}
-  unsigned short* getWfy(ParticleList* particles) {return particles->wfyP;}
-  unsigned short* getWfz(ParticleList* particles) {return particles->wfzP;}
-
-  void CleanParticles(ParticleList* s) {s->cleanup();}
-  void DeleteParticles(ParticleList* s) {if(s) {delete s; s = 0;}}
-  void WriteParticles(ParticleList* s, const char* fname) {s->writeParticles(fname);}
-}
 
 #endif

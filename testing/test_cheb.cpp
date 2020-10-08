@@ -1,4 +1,4 @@
-#include<quadrature.h>
+#include<Quadrature.h>
 #include<iostream>
 #include<iomanip>
 int main(int argc, char* argv[])

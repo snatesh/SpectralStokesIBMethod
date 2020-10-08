@@ -17,8 +17,11 @@ Lx = Nx * hx; Ly = Ny * hy; Lz = Nz * hz;
 nP = 100
 # viscocity
 eta = 1/4/np.sqrt(np.pi)
+# grid periodicity
+periodic_x = periodic_y = periodic_z = True
 # boundary conditions specified for ends of each axis
-BCs = np.array([1,1,1,1,1,1], dtype = np.uintc)
+# 2 - no bc should be used for periodic grid
+BCs = 2 * np.ones(dof * 6, dtype = np.uintc)
 
 # particle positions
 xP = np.zeros(3 * nP, dtype = np.double)
@@ -54,7 +57,7 @@ for iP in np.arange(0,nP):
 
 
 # instantiate the python grid wrapper
-gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, BCs)
+gridGen = GridGen(Lx, Ly, Lz, hx, hy, hz, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs)
 # instantiate and define the grid with C lib call
 # this sets the GridGen.grid member to a pointer to a C++ Grid struct
 gridGen.Make()
@@ -91,7 +94,7 @@ bTransformer.Btransform()
 uG_r = bTransformer.out_real
 
 # set velocity as new grid spread (C lib)
-gridGen.SetGridSpread(uG_r)
+gridGen.SetSpread(uG_r)
 
 # interpolate velocities on the particles (C lib)
 vP = Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
