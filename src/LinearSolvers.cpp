@@ -13,7 +13,7 @@ extern "C"
   {
     int nrhs = 2, ldab = 2 * kl + ku + 1;
     #pragma omp parallel for
-    for (unsigned int i = 0; i < Nyx; ++i)
+    for (unsigned int i = 1; i < Nyx; ++i)
     {
       unsigned int offset_a = ldab * Nz * i;
       unsigned int offset_bc = nrhs * Nz * i;
@@ -46,7 +46,7 @@ extern "C"
   {
     int nrhs = 1, ldab = 2 * kl + ku + 1;
     #pragma omp parallel for
-    for (unsigned int i = 0; i < Nyx; ++i)
+    for (unsigned int i = 1; i < Nyx; ++i)
     {
       unsigned int offset_lu = ldab * Nz * i;
       unsigned int offset_rhs = nrhs * Nz * i;

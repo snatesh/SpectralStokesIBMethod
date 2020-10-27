@@ -57,7 +57,7 @@ def chebCoeffDiff(fhat, Nx, Ny, Nz, dof, H):
                    This the combined real and complex part
          
   """
-  Df = np.empty((Nz, Ny, Nx, dof), dtype = np.complex)  
+  Df = np.zeros((Nz, Ny, Nx, dof), dtype = np.complex)  
   fhat_rs = np.reshape(fhat, (Nz, Ny, Nx, dof))
   Df[-2,:,:,:] = 2 / H * (Nz - 1) * fhat_rs[-1,:,:,:] 
   for j in range(2,Nz):

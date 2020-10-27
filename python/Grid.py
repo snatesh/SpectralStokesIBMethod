@@ -150,8 +150,8 @@ class GridGen(object):
       libGrid.SetZ(self.grid, self.zpts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), \
                    self.zwts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
     libGrid.SetPeriodicity(self.grid, self.periodic_x, self.periodic_y, self.periodic_z)
-    libGrid.SetBCs(self.grid, self.BCs.ctypes.data_as(ctypes.POINTER(ctypes.c_uint))) 
     libGrid.Setdof(self.grid, self.dof) 
+    libGrid.SetBCs(self.grid, self.BCs.ctypes.data_as(ctypes.POINTER(ctypes.c_uint))) 
     libGrid.SetupGrid(self.grid)  
 
   def ZeroExtGrid(self):

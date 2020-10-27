@@ -119,7 +119,7 @@ class Transformer(object):
       self.out_complex is populated with the complex part of the output transform
 
     """
-    U = np.empty(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
+    U = np.zeros(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
           ((2 * self.Nz - 2), self.Ny, self.Nx, self.dof))
     in_real_rs = np.reshape(self.in_real, (self.Nz, self.Ny, self.Nx, self.dof))
     U[0:self.Nz,:,:,:] = in_real_rs
@@ -129,8 +129,8 @@ class Transformer(object):
                                              self.Nx, self.Ny, 2 * self.Nz - 2, self.dof)
     _out_real = np.ctypeslib.as_array(libTransform.getRealOut(self.transform), shape=(2 * self.Nz - 2, self.Ny, self.Nx, self.dof))
     _out_complex = np.ctypeslib.as_array(libTransform.getComplexOut(self.transform), shape=(2 * self.Nz - 2, self.Ny, self.Nx, self.dof))
-    self.out_real = np.empty((self.Nz, self.Ny, self.Nx, self.dof), dtype = np.double)
-    self.out_complex = np.empty((self.Nz, self.Ny, self.Nx, self.dof), dtype = np.double)
+    self.out_real = np.zeros((self.Nz, self.Ny, self.Nx, self.dof), dtype = np.double)
+    self.out_complex = np.zeros((self.Nz, self.Ny, self.Nx, self.dof), dtype = np.double)
     self.out_real[0,:,:,:] = _out_real[0,:,:,:]
     self.out_real[1:-1,:,:,:] = _out_real[1:self.Nz-1,:,:,:] + _out_real[-1:self.Nz-1:-1,:,:,:]
     self.out_real[-1,:,:,:] = _out_real[self.Nz-1,:,:,:]
@@ -178,9 +178,9 @@ class Transformer(object):
       self.out_complex is populated with the complex part of the output transform
 
     """
-    Ur = np.empty(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
+    Ur = np.zeros(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
           ((2 * self.Nz - 2), self.Ny, self.Nx, self.dof))
-    Uc = np.empty(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
+    Uc = np.zeros(((2 * self.Nz - 2) * self.Ny * self.Nx * self.dof,), dtype = np.double).reshape(\
           ((2 * self.Nz - 2), self.Ny, self.Nx, self.dof))
     in_real_rs = self.in_real.reshape((self.Nz, self.Ny, self.Nx, self.dof))
     in_complex_rs = self.in_complex.reshape((self.Nz, self.Ny, self.Nx, self.dof))

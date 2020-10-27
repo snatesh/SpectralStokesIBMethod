@@ -70,10 +70,12 @@ set(spreadInterpSRC src/SpreadInterp.cpp wrapper/SpreadInterpWrapper.cpp)
 set(transformSRC src/Transform.cpp wrapper/TransformWrapper.cpp)
 set(spreadInterpTPTestSRC testing/test_spread_TP.cpp)
 set(linSolveSRC src/LinearSolvers.cpp)
+set(dpToolsSRC src/DPTools.cpp)
 set(spreadInterpDPTestSRC testing/test_spread_DP.cpp)
 set(chebTestSRC testing/test_cheb.cpp)
 set(transformTestSRC testing/test_transform_TP.cpp)
 set(bcSRC wrapper/BCWrapper.cpp)
+
 
 # set build output paths
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -85,7 +87,7 @@ set_source_files_properties(${chebSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info 
 target_link_libraries(cheb gomp)
 
 add_library(grid SHARED ${gridSRC})
-set_source_files_properties(${gridSRC} PROPERTIES COMPILE_FLAGS "-O3 -fPIC -fopenmp")
+set_source_files_properties(${gridSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
 target_link_libraries(grid cheb fftw3)
 
 add_library(particles SHARED ${particlesSRC})
@@ -97,11 +99,14 @@ set_source_files_properties(${spreadInterpSRC} PROPERTIES COMPILE_FLAGS "-O3 -fo
 target_link_libraries(spreadInterp particles)
 
 add_library(transform SHARED ${transformSRC})
-set_source_files_properties(${transformSRC} PROPERTIES COMPILE_FLAGS "-lfftw3 -lm -fPIC -fopenmp")
+set_source_files_properties(${transformSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -lfftw3 -lm -fPIC -fopenmp")
 target_link_libraries(transform fftw3 fftw3_omp gomp)
 
 add_library(linSolve SHARED ${linSolveSRC})
-set_source_files_properties(${linSolveSRC} PROPERTIES COMPILE_FLAGS "-lm -llapacke -lblas -fopenmp -fPIC")
+set_source_files_properties(${linSolveSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -lm -llapacke -lblas -fopenmp -fPIC")
+
+add_library(dpTools SHARED ${dpToolsSRC})
+set_source_files_properties(${dpToolsSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -lm -lblas -llapacke -DHAVE_LAPACK_CONFIG_H -DLAPACK_COMPLEX_STRUCTURE -fopenmp -lfftw3 -fPIC")
 
 add_library(BC SHARED ${bcSRC})
 set_source_files_properties(${bcSRC} PROPERTIES COMPILE_FLAGS "-O3 -fopt-info -fPIC -fopenmp")
@@ -113,6 +118,7 @@ install(TARGETS grid ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS particles ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS transform ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS linSolve ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
+install(TARGETS dpTools ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 install(TARGETS BC ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 ## build executables ##
 

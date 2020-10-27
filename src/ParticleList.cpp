@@ -236,7 +236,6 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       zclose[i] += ((wz % 2) && (xP[2 + 3 * i] / grid.hz - zclose[i] > 1.0 / 2.0) ? 1 : 0);
       for (unsigned int j = 0; j < wx; ++j)
       {
-        // TODO : something wrong with weird grid spacing like 0.3 or 0.7
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
         if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
@@ -361,10 +360,8 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
     if (indr[i] == grid.Nzeff) {indr[i] -= 1;}
     else if (xP[2 + 3 * i] - alphafP[i] > zG_ext[indr[i]]) {indr[i] -= 1;}
     wfzP[i] = indr[i] - indl[i] + 1; 
-    //std::cout << zG_ext[indl[i]]- zG_ext[indr[i]] << " " << 2 * alphafP[i] << std::endl; 
   }
   
-  std::cout << "ext_up: " << ext_up << ", ext_down: " << ext_down << std::endl; 
   wfzP_max = *std::max_element(wfzP, wfzP + nP); 
   unsigned int N2 = grid.Nxeff * grid.Nyeff, N3 = N2 * grid.Nzeff;
   grid.fG_unwrap = (double*) fftw_malloc(N3 * grid.dof * sizeof(double)); 
@@ -398,7 +395,7 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
         if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
-          xunwrap[j + i * wfxP_max] = alphafP[i];
+          xunwrap[j + i * wfxP_max] = alphafP[i] - 1e-15;
         }
         // initialize buffer region if needed
         if (j == wx - 1 && wx < wfxP_max)
@@ -411,7 +408,7 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
         yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hy - xP[1 + 3 * i];
         if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
-          yunwrap[j + i * wfyP_max] = alphafP[i];
+          yunwrap[j + i * wfyP_max] = alphafP[i] - 1e-15;
         }
         // initialize buffer region if needed
         if (j == wy - 1 && wy < wfyP_max)
@@ -425,7 +422,7 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
         zunwrap[k + i * wfzP_max] = zG_ext[j] - xP[2 + 3 * i]; 
         if (fabs(pow(zunwrap[k + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
         {
-          zunwrap[k + i * wfzP_max] = alphafP[i];
+          zunwrap[k + i * wfzP_max] = alphafP[i] - 1e-15;
         }
         pt_wts[k + i * wfzP_max] = grid.hx * grid.hy * zG_ext_wts[j];
         k += 1;

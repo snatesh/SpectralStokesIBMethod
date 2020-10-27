@@ -104,6 +104,7 @@ void Grid::makeTP(const double Lx, const double Ly, const double Lz,
   this->dof = dof;
   this->fG = (double*) fftw_malloc(dof * Nx * Ny * Nz * sizeof(double));
   this->isperiodic[0] = this->isperiodic[1] = this->isperiodic[2] = true;
+  this->BCs = (BC*) malloc(6 * dof * sizeof(BC));
   for (unsigned int i = 0; i < 6 * dof; ++i)
   {
     this->BCs[i] = none;
@@ -125,6 +126,7 @@ void Grid::makeDP(const double Lx, const double Ly, const double Lz,
   this->zG_wts = (double*) fftw_malloc(Nz * sizeof(double)); 
   clencurt(zG, zG_wts, 0., Lz, Nz);
   this->isperiodic[0] = this->isperiodic[1] = true; this->isperiodic[2] = false;
+  this->BCs = (BC*) malloc(6 * dof * sizeof(BC));
   for (unsigned int i = 0; i < 6 * dof; ++i)
   {
     this->BCs[i] = none;
