@@ -10,16 +10,29 @@ extern "C"
   void evalTheta(const double* in, double* out, double theta, 
                  unsigned int Nyx, unsigned int Nz, unsigned int dof)
   {
-    // can't parallelize without making daxpy call atomic, 
-    // or writing reduction version of daxpy
-    #pragma omp simd
-    for (unsigned int iz = 0; iz < Nz; ++iz)
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < Nyx; ++i)
     {
-      unsigned int offset = Nyx * dof  * iz;
-      const double* in_z = &(in[offset]);  
-      double alpha = cos(iz * theta);
-      cblas_daxpy(Nyx * dof, alpha, in_z, 1, out, 1);
-    } 
+      double* out_xy = &(out[dof * i]);
+      for (unsigned int j = 0; j < Nz; ++j)
+      {
+        const double* in_xyz = &(in[dof * (i + Nyx * j)]);
+        double alpha = cos(j * theta);
+        #pragma omp simd
+        for (unsigned int l = 0; l < dof; ++l)
+        {
+          out_xy[l] += in_xyz[l] * alpha; 
+        }
+      }
+    }
+    //#pragma omp simd
+    //for (unsigned int iz = 0; iz < Nz; ++iz)
+    //{
+    //  unsigned int offset = Nyx * dof  * iz;
+    //  const double* in_z = &(in[offset]);  
+    //  double alpha = cos(iz * theta);
+    //  cblas_daxpy(Nyx * dof, alpha, in_z, 1, out, 1);
+    //} 
   }
 
   void chebTransform(double* in_re, double* in_im, double* out_re, 
