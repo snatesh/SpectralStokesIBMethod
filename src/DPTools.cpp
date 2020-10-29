@@ -47,8 +47,8 @@ extern "C"
     }
     for (unsigned int i = N; i < ext; ++i)
     {
-      in[i][0] = in_re[2 * N - 2 - i];
-      in[i][1] = in_im[2 * N - 2 - i];
+      in[i][0] = in_re[ext - i];
+      in[i][1] = in_im[ext - i];
     }
     fftw_execute_dft(plan, in, in);
     out_re[0] = in[0][0] / ((double) ext); 
