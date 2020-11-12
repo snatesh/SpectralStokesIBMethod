@@ -8,7 +8,7 @@ from Particles import *
 from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
-from Solvers import DoublyPeriodicStokes_bottom_wall
+from Solvers import DoublyPeriodicStokes_init, DoublyPeriodicStokes_bottom_wall
 from Ghost import *
 import matplotlib.pyplot as plt
 
@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 Nx = 128; Ny = 128; Nz = 65; dof = 3 
 hx = 6.435421e-01; hy = 6.435421e-01;
 Lx = 2 * 41.1866915502928066; Ly = 2 * 41.1866915502928066; Lz = 22.0959392496299643; 
-dof = 3 
+dof = 3; H = Lz / 2 
 # number of particles
 nP = 1
 # viscocity
@@ -41,28 +41,31 @@ zpts, zwts = clencurt(Nz, 0, Lz)
 write = False
 heights = np.linspace(0,10,21)
 mobx = np.zeros((heights.size,1))
+Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, uvints, BCs_k0,\
+  BCs_k, LU, Ainv_B, C, PIV, C_k0, Ginv, Ginv_k0, BCR1, BCL1, BCR2, BCL2 \
+    = DoublyPeriodicStokes_init(Nx, Ny, Nz, Lx, Ly, H)
 
+# particle positions
+xP = np.zeros(3 * nP, dtype = np.double)
+# particle forces
+fP = np.zeros(dof * nP, dtype = np.double)
+# beta for ES kernel for each particle (from table)
+betafP = np.zeros(nP, dtype = np.double)
+# dimensionless radii given ES kernel for each particle (from table)
+cwfP = np.zeros(nP, dtype = np.double)
+# width of ES kernel given dimensionless radii (from table)
+wfP = np.zeros(nP, dtype = np.ushort)
+# actual radii of the particles
+radP = np.zeros(nP, dtype = np.double)
+# define random configuration of particles
+# in terms of kernel, force and position
+#wf_choices = np.array([4,5,6])
+wf_choices = np.array([6,6,6])
+#cwf_choices = np.array([1.2047, 1.3437, 1.5539])
+cwf_choices = np.array([1.5539, 1.5539, 1.5539])
+#betaf_choices = np.array([1.785, 1.886, 1.714])
+betaf_choices = np.array([1.714, 1.714, 1.714])
 for iHeight in range(0,heights.size):
-  # particle positions
-  xP = np.zeros(3 * nP, dtype = np.double)
-  # particle forces
-  fP = np.zeros(dof * nP, dtype = np.double)
-  # beta for ES kernel for each particle (from table)
-  betafP = np.zeros(nP, dtype = np.double)
-  # dimensionless radii given ES kernel for each particle (from table)
-  cwfP = np.zeros(nP, dtype = np.double)
-  # width of ES kernel given dimensionless radii (from table)
-  wfP = np.zeros(nP, dtype = np.ushort)
-  # actual radii of the particles
-  radP = np.zeros(nP, dtype = np.double)
-  # define random configuration of particles
-  # in terms of kernel, force and position
-  #wf_choices = np.array([4,5,6])
-  wf_choices = np.array([6,6,6])
-  #cwf_choices = np.array([1.2047, 1.3437, 1.5539])
-  cwf_choices = np.array([1.5539, 1.5539, 1.5539])
-  #betaf_choices = np.array([1.785, 1.886, 1.714])
-  betaf_choices = np.array([1.714, 1.714, 1.714])
   for iP in np.arange(0,nP):
     # random index
     randInd = random.randrange(np.size(wf_choices)) 
@@ -74,7 +77,6 @@ for iHeight in range(0,heights.size):
     xP[1 + 3 * iP] = Ly / 2
     xP[2 + 3 * iP] = heights[iHeight] 
     fP[2 + dof * iP] = 1.0
-    
   # instantiate the python grid wrapper
   gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
   # instantiate and define the grid with C lib call
@@ -89,7 +91,6 @@ for iHeight in range(0,heights.size):
   # this builds the particles-grid locator and defines other
   # interal data used to spread and interpolate
   particlesGen.Setup(gridGen.grid)
-  
   # initialize the extended grid data 
   gridGen.ZeroExtGrid()
   # spread forces on the particles (C lib)
@@ -110,7 +111,11 @@ for iHeight in range(0,heights.size):
   fG_hat_i = fTransformer.out_complex
   # solve DP Stokes eq with the DP + Correction method 
   U_hat_r, U_hat_i, P_hat_r, P_hat_i = \
-    DoublyPeriodicStokes_bottom_wall(fG_hat_r, fG_hat_i, gridGen.zpts, eta, Lx, Ly, Lz, Nx, Ny, Nz)
+    DoublyPeriodicStokes_bottom_wall(fG_hat_r, fG_hat_i, zpts, eta, Nx, Ny, Nz, H,\
+                                     Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, \
+                                     uvints, BCs_k0, BCs_k, LU, Ainv_B, C, \
+                                     PIV, C_k0, Ginv, Ginv_k0, BCR1, BCL2)
+
   
   # instantiate back transform wrapper with velocities on grid (C lib)
   bTransformer = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
@@ -128,6 +133,7 @@ for iHeight in range(0,heights.size):
   Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
   vP = particlesGen.GetForces()
   mobx[iHeight] = vP[2]
+  print(mobx)
   if write:
     # write particles with interpolated vel to file (C lib)
     particlesGen.WriteParticles('particles.txt')

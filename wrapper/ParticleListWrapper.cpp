@@ -53,6 +53,7 @@ extern "C"
     return particles->normfP;
   }
 
+  void Update(ParticleList* s, Grid* g, double* x_new) {s->update(x_new, *g);}
   void CleanParticles(ParticleList* s) {s->cleanup();}
   void DeleteParticles(ParticleList* s) {if(s) {delete s; s = 0;}}
   void WriteParticles(ParticleList* s, const char* fname) {s->writeParticles(fname);}

@@ -71,6 +71,10 @@ class ParticlesGen(object):
     libParticles.RandomConfig.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     libParticles.RandomConfig.restype = ctypes.c_void_p
 
+    libParticles.Update.argtypes = [ctypes.c_void_p, ctypes.c_void_p,\
+                                             ctypes.c_double]
+    libParticles.Update.restype = None
+
     libParticles.CleanParticles.argtypes = [ctypes.c_void_p]
     libParticles.CleanParticles.restype = None
   
@@ -167,6 +171,20 @@ class ParticlesGen(object):
       additional information given the particles.
     """
     libParticles.Setup(self.particles, grid)
+
+  def Update(self, xP_new, grid):
+    """
+    Python wrapper for updating particles on ghe grid
+  
+    Parameters: 
+      grid - pointer to c++ grid struct (stored in GridGen)
+      xP_new - array of new particle positions (must be same size as old)
+    Side Effects:
+      The data pointed to by self.particles is modified with the new
+      particle positions, and the firstn,nextn,number arrays (for particle lookup)
+      contained in grid are updated.
+    """
+    libParticles.Update(self.particles, grid, xP_new)
 
   def WriteParticles(self, fname):
     """

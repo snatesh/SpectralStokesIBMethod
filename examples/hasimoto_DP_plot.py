@@ -14,7 +14,7 @@ mu0_u = 1 / (6 * np.pi * eta * Rh_u)
 mu0_nu = 1/ (6 * np.pi * eta * Rh_nu)
 Ls_u = np.linspace(60.,200.,5)
 Ls_nu = Ls_u / 2
-nTrials = 50
+nTrials = 10
 
 # linear fit to normalized mobility (should have intercept ~(0,1))
 #fit_nu = np.poly1d(np.polyfit(1 / Ls_nu, np.mean(mobx_nu / mu0_nu, axis = 1), 1))

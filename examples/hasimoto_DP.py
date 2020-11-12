@@ -1,16 +1,15 @@
 # python native stuff
 import sys
 import random
-# import Python modules wrapping C libraries (and also numpy)
 sys.path.append('../python')
 from Grid import *
 from Particles import *
 from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
-from Solvers import DoublyPeriodicStokes_no_wall
+from Solvers import DoublyPeriodicStokes_init, DoublyPeriodicStokes_no_wall
 from Ghost import *
-nTrials = 50
+nTrials = 10
 Ls = np.linspace(60.,200.,5)
 mobx = np.zeros((Ls.size,nTrials), dtype = np.double)
 dof = 3
@@ -22,12 +21,11 @@ BCs = 2 * np.ones(dof * 6, dtype = np.uintc)
 # grid periodicity
 periodic_x = periodic_y = True; periodic_z = False;
 # grid spacing in x,y
-hx = hy = 0.5
+hx = hy = 1.0
 # chebyshev grid and weights for z
 Lz = 20.0; H = Lz / 2.0; 
 Nz = int(np.ceil(1.25 * (np.pi / (np.arccos(-hx / H) - np.pi / 2))))
 zpts, zwts = clencurt(Nz, 0, Lz)
-
 # if no wall, choose whether to 0 the k=0 mode of the RHS
 # k0 = 0 - the k=0 mode of the RHS for pressure and velocity will be 0
 # k0 = 1 - the k=0 mode of the RHS for pressure and velocity will not be 0
@@ -39,6 +37,9 @@ for iL in range(0,Ls.size):
     # grid info 
     Nx = Ny = int(Ls[iL]) 
     Lx = Ly = hx * Nx 
+    Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, uvints, BCs_k0, \
+      BCs_k, LU, Ainv_B, C, PIV, C_k0, Ginv, Ginv_k0, _, _, _, _, \
+        = DoublyPeriodicStokes_init(Nx, Ny, Nz, Lx, Ly, H)
     # number of particles
     nP = 1
     # viscocity
@@ -47,11 +48,10 @@ for iL in range(0,Ls.size):
     xP = np.zeros(3 * nP, dtype = np.double)
     xP[0] = Lx / 2
     xP[1] = Lx / 2
-    xP[2] = Lz / 2.0#random.random() * Lz
-    print(xP)
+    xP[2] = Lz / 2
     # particle forces
     fP = np.zeros(dof * nP, dtype = np.double)
-    fP[0] = 1; fP[1] = 0; fP[2] = 0
+    fP[0] = 1.0; fP[1] = 0; fP[2] = 0
     # beta for ES kernel for each particle (from table)
     betafP = np.array([1.714])
     # dimensionless radii given ES kernel for each particle (from table)
@@ -60,7 +60,6 @@ for iL in range(0,Ls.size):
     wfP = np.array([6], dtype = np.ushort)
     # actual radii of the particles
     radP = hx * np.array([cwfP[0]])
-    
     # instantiate the python grid wrapper
     gridGen = GridGen(Lx, Ly, Lz, hx, hy, 0, Nx, Ny, Nz, dof, periodic_x, periodic_y, periodic_z, BCs, zpts, zwts)
     # instantiate and define the grid with C lib call
@@ -89,10 +88,11 @@ for iL in range(0,Ls.size):
     # get the Fourier coefficients
     fG_hat_r = fTransformer.out_real
     fG_hat_i = fTransformer.out_complex
-    
     # solve Stokes eq 
-    U_hat_r, U_hat_i, _, _ = DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz, k0)
-    
+    U_hat_r, U_hat_i, _, _ = DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Nx, Ny, Nz, H, \
+                                                          Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, \
+                                                          uvints, BCs_k0, BCs_k, LU, Ainv_B, C, \
+                                                          PIV, C_k0, Ginv, Ginv_k0, k0)
     # instantiate back transform wrapper with velocities on grid (C lib)
     bTransformer = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
     bTransformer.Btransform_cheb()
@@ -120,6 +120,6 @@ for iL in range(0,Ls.size):
     gridGen.Clean()
     particlesGen.Clean()
 
-np.savetxt('x_mobility_nonUnit_DP.txt', mobx)
+np.savetxt('x_mobility_unit_DP.txt', mobx)
 
 

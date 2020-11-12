@@ -237,7 +237,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       for (unsigned int j = 0; j < wx; ++j)
       {
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
-        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
           xunwrap[j + i * wfxP_max] = alphafP[i];
         }
@@ -250,7 +250,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       for (unsigned int j = 0; j < wy; ++j)
       {
         yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hy - xP[1 + 3 * i];
-        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
           yunwrap[j + i * wfyP_max] = alphafP[i];
         }
@@ -263,7 +263,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
       for (unsigned int j = 0; j < wz; ++j)
       {
         zunwrap[j + i * wfzP_max] = ((double) zclose[i] + j - wz / 2 + evenz) * grid.hz - xP[2 + 3 * i];
-        if (fabs(pow(zunwrap[j + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(zunwrap[j + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
           zunwrap[j + i * wfzP_max] = alphafP[i];
         }
@@ -298,7 +298,7 @@ void ParticleList::locateOnGridUnifZ(Grid& grid)
   }
   if (xclose) {fftw_free(xclose); xclose = 0;}
   if (yclose) {fftw_free(yclose); yclose = 0;}
-  if (zclose) {fftw_free(yclose); yclose = 0;}
+  if (zclose) {fftw_free(zclose); zclose = 0;}
 }
 
 void ParticleList::locateOnGridNonUnifZ(Grid& grid)
@@ -393,9 +393,9 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       for (unsigned int j = 0; j < wx; ++j)
       {
         xunwrap[j + i * wfxP_max] = ((double) xclose[i] + j - wx / 2 + evenx) * grid.hx - xP[3 * i];
-        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(xunwrap[j + i * wfxP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
-          xunwrap[j + i * wfxP_max] = alphafP[i] - 1e-15;
+          xunwrap[j + i * wfxP_max] = alphafP[i] - 1e-14;
         }
         // initialize buffer region if needed
         if (j == wx - 1 && wx < wfxP_max)
@@ -406,9 +406,9 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       for (unsigned int j = 0; j < wy; ++j)
       {
         yunwrap[j + i * wfyP_max] = ((double) yclose[i] + j - wy / 2 + eveny) * grid.hy - xP[1 + 3 * i];
-        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(yunwrap[j + i * wfyP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
-          yunwrap[j + i * wfyP_max] = alphafP[i] - 1e-15;
+          yunwrap[j + i * wfyP_max] = alphafP[i] - 1e-14;
         }
         // initialize buffer region if needed
         if (j == wy - 1 && wy < wfyP_max)
@@ -420,9 +420,9 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
       for (unsigned int j = indl[i]; j <= indr[i]; ++j)
       {
         zunwrap[k + i * wfzP_max] = zG_ext[j] - xP[2 + 3 * i]; 
-        if (fabs(pow(zunwrap[k + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-15) 
+        if (fabs(pow(zunwrap[k + i * wfzP_max],2) - pow(alphafP[i],2)) < 1e-14) 
         {
-          zunwrap[k + i * wfzP_max] = alphafP[i] - 1e-15;
+          zunwrap[k + i * wfzP_max] = alphafP[i] - 1e-14;
         }
         pt_wts[k + i * wfzP_max] = grid.hx * grid.hy * zG_ext_wts[j];
         k += 1;
@@ -462,10 +462,83 @@ void ParticleList::locateOnGridNonUnifZ(Grid& grid)
 
   if (zG_ext) {fftw_free(zG_ext); zG_ext = 0;}
   if (zG_ext_wts) {fftw_free(zG_ext_wts); zG_ext_wts = 0;}
-  if (xclose) {fftw_free(xclose); xclose = 0;}
-  if (yclose) {fftw_free(yclose); yclose = 0;}
   if (indl) {fftw_free(indl); indl = 0;}
   if (indr) {fftw_free(indr); indr = 0;}
+  if (xclose) {fftw_free(xclose); xclose = 0;}
+  if (yclose) {fftw_free(yclose); yclose = 0;}
+}
+
+void ParticleList::update(const double* xP_new, Grid& grid)
+{
+  // loop over unique alphas
+  for (const double& alphaf : unique_alphafP)
+  {
+    const unsigned short wx = std::round(2 * alphaf / grid.hx);
+    const unsigned short wy = std::round(2 * alphaf / grid.hy);
+    const int evenx = -1 * (wx % 2) + 1, eveny = -1 * (wy % 2) + 1;
+    // loop over w^2 groups of columns
+    for (unsigned int izero = 0; izero < wx; ++izero)
+    {
+      for (unsigned int jzero = 0; jzero < wy; ++jzero)
+      {
+        // Uncomment pragma if enforcing that particles
+        // can move at most to a neighboring column per step
+
+        //#pragma omp parallel for collapse(2)
+        for (unsigned int ii = izero; ii < grid.Nxeff; ii += wx)
+        {
+          for (unsigned int jj = jzero; jj < grid.Nyeff; jj += wy)
+          { 
+            // column index
+            int col = jj + ii * grid.Nyeff;
+            // trailing ptr, index of first particle in col
+            int nprev = -1, n = grid.firstn[col];
+            // if there is a particle
+            while (n > -1)
+            {
+              // if it has matching alpha
+              if (alphafP[n] == alphaf) 
+              {
+                // check if particle n has moved out of the column
+                int xclose = (int) (xP_new[3 * n] / grid.hx);
+                int yclose = (int) (xP_new[1 + 3 * n] / grid.hy);
+                xclose += ((wx % 2) && (xP_new[3 * n] / grid.hx - xclose > 1.0 / 2.0) ? 1 : 0);
+                yclose += ((wy % 2) && (xP_new[1 + 3 * n] / grid.hy - yclose > 1.0 / 2.0) ? 1 : 0);
+                int col_new = (yclose + wfyP_max) + (xclose + wfxP_max) * grid.Nyeff;
+                // if the particle has moved
+                if (col_new != col)
+                {
+                  // index of next pt in column
+                  int nnext = grid.nextn[n];
+                  // update add particle n to col_new of search struct
+                  grid.nextn[n] = grid.firstn[col_new];
+                  grid.firstn[col_new] = n;
+                  grid.number[col_new] += 1;
+                  // delete particle n from col of search struct
+                  if (nprev == -1){grid.firstn[col] = nnext;}
+                  else {grid.nextn[nprev] = nnext;}
+                  grid.number[col] -= 1;
+                  n = nnext;
+                }
+                // if the particle hasn't moved
+                else
+                {
+                  // update trailing pointer and set n to next particle in col
+                  nprev = n; n = grid.nextn[n];
+                }
+              }
+              // if the particle does not have matching alpha
+              else
+              {
+                // update trailing pointer and set n to next particle in col
+                nprev = n; n = grid.nextn[n]; 
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 /* write current state of ParticleList to ostream */
@@ -543,6 +616,7 @@ void ParticleList::cleanup()
     if (yunwrap) {fftw_free(yunwrap); yunwrap = 0;}
     if (zunwrap) {fftw_free(zunwrap); zunwrap = 0;}
     if (zoffset) {fftw_free(zoffset); zoffset = 0;}
+
     if (pt_wts) {fftw_free(pt_wts); pt_wts = 0;}
   }
 }

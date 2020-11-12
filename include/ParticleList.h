@@ -110,6 +110,15 @@ struct ParticleList
   void locateOnGrid(Grid& grid);
   void locateOnGridUnifZ(Grid& grid);
   void locateOnGridNonUnifZ(Grid& grid);
+  /* 
+     Update the particle positions and search data structure 
+     
+     We can only run in parallel if we enforce that particles
+     can move at most to a neighboring column per step.
+     Uncomment the pragma statements in the loop if this
+     is the case.
+  */
+  void update(const double* xP_new, Grid& grid);
   /* write current state of ParticleList to ostream */
   void writeParticles(std::ostream& outputStream) const; 
   void writeParticles(const char* fname) const;

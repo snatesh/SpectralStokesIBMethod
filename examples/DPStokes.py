@@ -1,14 +1,13 @@
 # python native stuff
 import sys
 import random
-# import Python modules wrapping C libraries (and also numpy)
 sys.path.append('../python')
 from Grid import *
 from Particles import *
 from SpreadInterp import *
 from Transform import *
 from Chebyshev import *
-from Solvers import DoublyPeriodicStokes_no_wall
+from Solvers import DoublyPeriodicStokes_init, DoublyPeriodicStokes_no_wall
 from Ghost import *
 import timeit
 
@@ -16,10 +15,14 @@ import timeit
 # grid info 
 Nx = 128; Ny = 128; Nz = 29; dof = 3 
 hx = 1.113649526996589; hy = 1.113649526996589;
-Lx = 2 * 71.273569727781705; Ly = 2 * 71.273569727781705; Lz = 16.890351204817986; 
+Lx = 2 * 71.273569727781705; Ly = 2 * 71.273569727781705; Lz = 16.890351204817986; H = Lz / 2
+# precompute wave nums, fourier deriv ops, cheb integral mats and linops+bcs for each k
+Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, uvints, BCs_k0, \
+  BCs_k, LU, Ainv_B, C, PIV, C_k0, Ginv, Ginv_k0, _, _, _, _, \
+    = DoublyPeriodicStokes_init(Nx, Ny, Nz, Lx, Ly, H)
+
 # number of particles
 nP = 100000
-#nP = 10
 # viscocity
 eta = 1/4/np.sqrt(np.pi)
 # boundary conditions specified for ends of each axis
@@ -118,8 +121,10 @@ for j in range(0,nits):
   fG_hat_r = fTransformer.out_real
   fG_hat_i = fTransformer.out_complex
   # solve Stokes eq 
-  U_hat_r, U_hat_i, P_hat_r, P_hat_i = DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Lx, Ly, Lz, Nx, Ny, Nz, k0)
-
+  U_hat_r, U_hat_i, _, _ = DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Nx, Ny, Nz, H, \
+                                                        Kx, Ky, K, Dx, Dy, FIMat, SIMat, pints, \
+                                                        uvints, BCs_k0, BCs_k, LU, Ainv_B, C, \
+                                                        PIV, C_k0, Ginv, Ginv_k0, k0)
   # instantiate back transform wrapper with velocities on grid (C lib)
   bTransformer = Transformer(U_hat_r, U_hat_i, Nx, Ny, Nz, dof)
   bTransformer.Btransform_cheb()
@@ -135,7 +140,6 @@ for j in range(0,nits):
   # interpolate velocities on the particles (C lib)
   Interpolate(particlesGen.particles, gridGen.grid, nP * dof)
   vP = particlesGen.GetForces()
-  print(vP[10]);
   if write:
     # write particles with interpolated vel to file (C lib)
     particlesGen.WriteParticles('particles.txt')

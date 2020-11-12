@@ -25,14 +25,6 @@ extern "C"
         }
       }
     }
-    //#pragma omp simd
-    //for (unsigned int iz = 0; iz < Nz; ++iz)
-    //{
-    //  unsigned int offset = Nyx * dof  * iz;
-    //  const double* in_z = &(in[offset]);  
-    //  double alpha = cos(iz * theta);
-    //  cblas_daxpy(Nyx * dof, alpha, in_z, 1, out, 1);
-    //} 
   }
 
   void chebTransform(double* in_re, double* in_im, double* out_re, 
@@ -164,7 +156,6 @@ extern "C"
     fftw_complex* out = in;
     fftw_plan fplan = fftw_plan_dft_1d(2 * Nz - 2, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_free(in);
-  
     double fac = 1.0 / 2.0 / eta;
     #pragma omp parallel for
     for (unsigned int i = 1; i < Nyx; ++i)
@@ -209,7 +200,6 @@ extern "C"
         Cp_r[j] = Cp_i[j] = Cu_r[j] = Cu_i[j] = 0;
         Cv_r[j] = Cv_i[j] = Cw_r[j] = Cw_i[j] = 0;
       }
-      
       coeffA[at(0,0)].real = fac;
       coeffA[at(0,1)].real = enkh * fac;
       coeffA[at(0,6)].real = -k;
@@ -291,7 +281,6 @@ extern "C"
                     &(Cvcorr_i[offset]), fplan, Nz);
       chebTransform(Cw_r, Cw_i, &(Cwcorr_r[offset]),
                     &(Cwcorr_i[offset]), fplan, Nz);
-      
       // clean
       fftw_free(enkz);
       fftw_free(ekzmh);

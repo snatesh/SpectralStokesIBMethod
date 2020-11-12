@@ -131,7 +131,7 @@ inline void fold(double* Fe, double* Fe_wrap, const unsigned short wx,
             for (unsigned int i = rbeg - 1; i < Nx; ++i)
             {
               unsigned int ipb = 2 * rbeg - i - 2;
-              Fe[d + dof * at(ipb, j, k, Nx, Ny)] -= Fe[d + dof * at(i, j, k, Nx, Ny)]; 
+              Fe[d + dof * at(ipb, j, k, Nx, Ny)] += s * Fe[d + dof * at(i, j, k, Nx, Ny)]; 
             }
           }
         }
