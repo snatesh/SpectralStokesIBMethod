@@ -215,18 +215,14 @@ def DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Nx, Ny, Nz, H,\
   Cg = np.asfortranarray((fG_hat_r[:,:,:,1] + 1j * fG_hat_i[:,:,:,1]).reshape((Nz, Ny * Nx)))
   Ch = np.asfortranarray((fG_hat_r[:,:,:,2] + 1j * fG_hat_i[:,:,:,2]).reshape((Nz, Ny * Nx)))
   Dh = np.asfortranarray(chebCoeffDiff(Ch, Nx, Ny, Nz, 1, H).reshape((Nz, Ny * Nx)))
- 
   # compute RHS of pressure poisson eq
   p_RHS = Dx * Cf + Dy * Cg + Dh
-    
   # solve for pressure, handling k=0 separately
   Cp, Dp = DoublyPeriodicStokes_no_wall_solvePressureBVP_k(p_RHS, LU, PIV, C, Ainv_B, Ginv, SIMat, FIMat)
-
   # handle k = 0 for pressure
   Cp[:,0], Dp[:,0] = DoublyPeriodicStokes_no_wall_solvePressureBVP_k0(\
                       p_RHS[:,0], C_k0, Ginv_k0, SIMat, FIMat, \
                       Ch[:,0], pints, k0)
-  
   # compute RHS for velocity solve
   u_RHS = (Dx * Cp - Cf) / eta
   v_RHS = (Dy * Cp - Cg) / eta
@@ -244,8 +240,6 @@ def DoublyPeriodicStokes_no_wall(fG_hat_r, fG_hat_i, eta, Nx, Ny, Nz, H,\
                 u_RHS, v_RHS, w_RHS, LU, PIV, C, \
                 Ainv_B, Ginv, SIMat, u_bc_RHS, \
                 v_bc_RHS, w_bc_RHS)
-
-
   # handle k = 0 for velocity
   Cu[:,0], Cv[:,0], Cw[:,0] = DoublyPeriodic_no_wall_solveVelocityBVP_k0(\
                                 u_RHS[:,0], v_RHS[:,0], w_RHS[:,0], C_k0,\
@@ -424,7 +418,6 @@ def DoublyPeriodicStokes_slit_channel(fG_hat_r, fG_hat_i, zpts, eta, Nx, Ny, Nz,
   # correct pressure for k = 0
   Cpcorr[:,0] = DoublyPeriodicStokes_wall_solvePressureBVP_k0(\
                    p_RHS_k0, C_k0, Ginv_k0, SIMat, Ch_k0, pints, Cp_k0)
-  #print(np.sum(np.abs(Cpcorr)));
   # correct velocities for k = 0
   BCs_k0_tw = np.asfortranarray(np.stack((BCR2, BCL2), axis = 0))
   C_k0_tw = BCs_k0_tw[:,0:Nz]
@@ -511,18 +504,16 @@ def DoublyPeriodicStokes_no_wall_solvePressureBVP_k(p_RHS, LU, PIV, C, Ainv_B, G
 
   """ 
   Nz, Nyx = p_RHS.shape
-  p_RHS_real = np.asfortranarray(np.real(p_RHS))
-  p_RHS_imag = np.asfortranarray(np.imag(p_RHS))
-  bandedSchurSolve(LU, p_RHS_real, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, p_RHS_imag, PIV, 2, 2, Nyx, Nz)
-  Ainv_F = p_RHS_real + 1j * p_RHS_imag
-  Y = np.einsum('ijk, jk->ik', Ginv,\
-        np.einsum('ijk, jk->ik', C, Ainv_F))
-  X = Ainv_F - np.einsum('ijk, jk->ik', Ainv_B, Y)
-  SecD = np.vstack((X,Y))
-  Cp = np.einsum('ij, jl->il', SIMat, SecD)
-  Dp = np.einsum('ij, jl->il', FIMat, SecD)
-  Cp[:,0] = Dp[:,0] = 0
+  p_RHS_r = np.asfortranarray(np.real(p_RHS))
+  p_RHS_i = np.asfortranarray(np.imag(p_RHS))
+  Cp_r = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cp_i = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Dp_r = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Dp_i = np.asfortranarray(np.zeros((Nz, Nyx)))
+  bandedSchurSolve(LU, p_RHS_r, PIV, C, Ginv, Ainv_B, np.asfortranarray(FIMat), np.asfortranarray(SIMat), Cp_r, Dp_r, 2, 2, Nyx, Nz)
+  bandedSchurSolve(LU, p_RHS_i, PIV, C, Ginv, Ainv_B, np.asfortranarray(FIMat), np.asfortranarray(SIMat), Cp_i, Dp_i, 2, 2, Nyx, Nz)
+  Cp = Cp_r + 1j * Cp_i
+  Dp = Dp_r + 1j * Dp_i
   return Cp, Dp
 
 def DoublyPeriodicStokes_no_wall_solvePressureBVP_k0(p_RHS, C, Ginv, SIMat, FIMat, Ch, pints, k0):
@@ -575,7 +566,6 @@ def DoublyPeriodicStokes_wall_solvePressureBVP_k0(p_RHS, C, Ginv, SIMat, Ch, pin
   Returns:
     Cp, Dp - Fourier-Chebyshev coeffs of pressure and its derivative at k = 0
   """
-
   Nz = p_RHS.shape[0]
   secD = np.concatenate((p_RHS, Ginv @ (C @ p_RHS)))
   Cp = SIMat @ secD
@@ -611,40 +601,33 @@ def DoublyPeriodicStokes_no_wall_solveVelocityBVP_k(u_RHS, v_RHS, w_RHS, LU, PIV
     Cu, Cv, Cw - Fourier-Chebyshev coeffs of velocity components
   """
   Nz, Nyx = u_RHS.shape
-  u_RHS_real = np.asfortranarray(np.real(u_RHS))
-  u_RHS_imag = np.asfortranarray(np.imag(u_RHS))
-  v_RHS_real = np.asfortranarray(np.real(v_RHS))
-  v_RHS_imag = np.asfortranarray(np.imag(v_RHS))
-  w_RHS_real = np.asfortranarray(np.real(w_RHS))
-  w_RHS_imag = np.asfortranarray(np.imag(w_RHS))
-  bandedSchurSolve(LU, u_RHS_real, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, u_RHS_imag, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, v_RHS_real, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, v_RHS_imag, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, w_RHS_real, PIV, 2, 2, Nyx, Nz)
-  bandedSchurSolve(LU, w_RHS_imag, PIV, 2, 2, Nyx, Nz)
-  # x vel
-  Ainv_F = u_RHS_real + 1j * u_RHS_imag
-  Y = np.einsum('ijk, jk->ik', Ginv,\
-        np.einsum('ijk, jk->ik', C, Ainv_F) - u_bc_RHS)
-  X = Ainv_F - np.einsum('ijk, jk->ik', Ainv_B, Y)
-  SecD = np.vstack((X,Y))
-  Cu = np.einsum('ij, jl->il', SIMat, SecD)
-  # y vel
-  Ainv_F = v_RHS_real + 1j * v_RHS_imag
-  Y = np.einsum('ijk, jk->ik', Ginv,\
-        np.einsum('ijk, jk->ik', C, Ainv_F) - v_bc_RHS)
-  X = Ainv_F - np.einsum('ijk, jk->ik', Ainv_B, Y)
-  SecD = np.vstack((X,Y))
-  Cv = np.einsum('ij, jl->il', SIMat, SecD)
-  # z vel
-  Ainv_F = w_RHS_real + 1j * w_RHS_imag
-  Y = np.einsum('ijk, jk->ik', Ginv,\
-        np.einsum('ijk, jk->ik', C, Ainv_F) - w_bc_RHS)
-  X = Ainv_F - np.einsum('ijk, jk->ik', Ainv_B, Y)
-  SecD = np.vstack((X,Y))
-  Cw = np.einsum('ij, jl->il', SIMat, SecD)
-  Cu[:,0] = Cv[:,0] = Cw[:,0] = 0
+  u_RHS_r = np.asfortranarray(np.real(u_RHS))
+  u_RHS_i = np.asfortranarray(np.imag(u_RHS))
+  v_RHS_r = np.asfortranarray(np.real(v_RHS))
+  v_RHS_i = np.asfortranarray(np.imag(v_RHS))
+  w_RHS_r = np.asfortranarray(np.real(w_RHS))
+  w_RHS_i = np.asfortranarray(np.imag(w_RHS))
+  u_bc_RHS_r = np.asfortranarray(np.real(u_bc_RHS))
+  u_bc_RHS_i = np.asfortranarray(np.imag(u_bc_RHS))
+  v_bc_RHS_r = np.asfortranarray(np.real(v_bc_RHS))
+  v_bc_RHS_i = np.asfortranarray(np.imag(v_bc_RHS))
+  w_bc_RHS_r = np.asfortranarray(np.real(w_bc_RHS))
+  w_bc_RHS_i = np.asfortranarray(np.imag(w_bc_RHS))
+  Cu_r = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cu_i = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cv_r = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cv_i = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cw_r = np.asfortranarray(np.zeros((Nz, Nyx)))
+  Cw_i = np.asfortranarray(np.zeros((Nz, Nyx)))
+  bandedSchurSolve_noD(LU, u_RHS_r, u_bc_RHS_r, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cu_r, 2, 2, Nyx, Nz)
+  bandedSchurSolve_noD(LU, u_RHS_i, u_bc_RHS_i, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cu_i, 2, 2, Nyx, Nz)
+  bandedSchurSolve_noD(LU, v_RHS_r, v_bc_RHS_r, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cv_r, 2, 2, Nyx, Nz)
+  bandedSchurSolve_noD(LU, v_RHS_i, v_bc_RHS_i, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cv_i, 2, 2, Nyx, Nz)
+  bandedSchurSolve_noD(LU, w_RHS_r, w_bc_RHS_r, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cw_r, 2, 2, Nyx, Nz)
+  bandedSchurSolve_noD(LU, w_RHS_i, w_bc_RHS_i, PIV, C, Ginv, Ainv_B, np.asfortranarray(SIMat), Cw_i, 2, 2, Nyx, Nz)
+  Cu = Cu_r + 1j * Cu_i
+  Cv = Cv_r + 1j * Cv_i
+  Cw = Cw_r + 1j * Cw_i
   return Cu, Cv, Cw                                               
 
 def DoublyPeriodic_no_wall_solveVelocityBVP_k0(u_RHS, v_RHS, w_RHS, C, Ginv, SIMat,\
@@ -897,7 +880,7 @@ def precomputeBandedLinOps(A, B, C, D, G, Ginv, PIV, kl, ku, Nyx, Nz):
                                      PIV.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),\
                                      kl, ku, Nyx, Nz)
 
-def bandedSchurSolve(LU, RHS, PIV, kl, ku, Nyx, Nz):
+def bandedSchurSolve(LU, RHS, PIV, C, Ginv, AinvB, FIMat, SIMat, Cp, Dp, kl, ku, Nyx, Nz):
   """
   Given a block linear system of the form 
   
@@ -925,7 +908,50 @@ def bandedSchurSolve(LU, RHS, PIV, kl, ku, Nyx, Nz):
   libLinSolve.bandedSchurSolve(LU.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
                                RHS.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
                                PIV.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),\
+                               C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               Ginv.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               AinvB.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               FIMat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               SIMat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               Cp.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                               Dp.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
                                kl, ku, Nyx, Nz)
+def bandedSchurSolve_noD(LU, RHS, bc_RHS, PIV, C, Ginv, AinvB, SIMat, Cp, kl, ku, Nyx, Nz):
+  """
+  Given a block linear system of the form 
+  
+  |A B||a |   |f|
+  |C D||c0| = |alpha| 
+       |d0|   |beta|,  
+              
+  this function takes the LU decomposition of A and computes
+  A^{-1}f by making calls to LAPACK's general banded LU solve
+  routines (dgbtrs) for each k.
+
+  Parameters:
+    LU - (2 * kl + ku + 1) x Nz x Nyx tensor of diagonals containing LU decomposition
+         of A. This is stored in LAPACK's banded matrix format in Fortran order
+    RHS - Nz x Nyx matrix containing f stored in Fortran order
+    PIV - Nz x Nyx matrix containing pivot info obtained by precomputeBandedLinOps()
+    kl - number of lower diagonals 
+    ku - number of upper diagonals
+    Nyx - Nx * Ny (total points in x-y plane)
+    Nz -  num points in z
+    
+  Side Effects:
+    RHS is overwritten with A^{-1}RHS (from LAPACK solve)
+  """
+  libLinSolve.bandedSchurSolve_noD(LU.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   RHS.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   bc_RHS.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   PIV.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),\
+                                   C.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   Ginv.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   AinvB.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   SIMat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   Cp.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),\
+                                   kl, ku, Nyx, Nz)
+
 
 def tobanded(A, kl, ku, _dtype):
   """ 
@@ -969,9 +995,29 @@ libLinSolve.precomputeBandedLinOps.restype = None
 libLinSolve.bandedSchurSolve.argtypes = [ctypes.POINTER(ctypes.c_double),\
                                          ctypes.POINTER(ctypes.c_double),\
                                          ctypes.POINTER(ctypes.c_int),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
+                                         ctypes.POINTER(ctypes.c_double),\
                                          ctypes.c_int, ctypes.c_int,\
                                          ctypes.c_int, ctypes.c_int]
 libLinSolve.bandedSchurSolve.restype = None
+
+libLinSolve.bandedSchurSolve_noD.argtypes = [ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_int),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.POINTER(ctypes.c_double),\
+                                             ctypes.c_int, ctypes.c_int,\
+                                             ctypes.c_int, ctypes.c_int]
+libLinSolve.bandedSchurSolve_noD.restype = None
 
 # declare dptools lib funcs
 libDPTools.evalTheta.argtypes = [ctypes.POINTER(ctypes.c_double),\
